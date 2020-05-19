@@ -99,22 +99,63 @@ pbsa.pbsa_file(file, threshold, maxiter, preliminary_optional=pardict)
 ```
 Possible parameters are:
 
-|    Parameter      |      Default      | Explanation |
-|----------|:-------------:|------:|
-| `norm` |  1 | Trace intensity value are divided by norm, mainly for visualization |
-
+**norm (default 1)** The traces will be divided by `norm` prior to analysis, mainly for visualization. `threshold` should be set lower accordingly.  
+**crop (default True)** If `True` the last frames of the trace are cropped for analysis purposes based on `threshold`. Traces are cropped at the last frame where the difference in intensity exceeds half the value of `threshold` + `bgframes`.  
+**bgframes (default 500)** How many frames to include in the analysis after the crop point.  
+**max_memory (default 2.0)** Maximum available memory for the preliminary step detection. The analysis defaults to a slower, but less memory consuming implementation if the necessary memory exceeds this value. For the default of 2 GB the fast implementation is used for traces with up to ~20000 frames.
 
 ### Filtering of traces
 
-The parameters of filtering can be specified in
+Based on the result of the preliminary step detection traces are excluded from the analysis. Assuming that the last two steps are correctly identified in a majority of traces, traces are flagged out. The used flags in the output file are:
 
-Based on the result of the preliminary step detection traces are excluded from the analysis. Assuming that the last two steps are correctly identified in a majority of traces, traces are 
+| flag | Meaning |
+| :--  | :------
+| -1   | No steps found in preliminary step detection
+| -2   | Background intensity out of bounds
+| -3   | Single fluorophore intensity out of bounds
+| -4   | Trace goes into negative values
+| -5   | Fluorophore number becomes negative
+| -6   | interval between final two steps is too short
+
+The optional parameters of the preliminary step detection can be set by providing a dictionary as an optional argument in `quickpbsa.pbsa_file()`:
+```python
+import quickpbsa as pbsa
+pardict = {'subtracted': False,
+           'percentile_step': [20, 80]}
+pbsa.pbsa_file(file, threshold, maxiter, filter_optional=pardict)
+```
+Possible parameters are:
+
+**subtracted (default True)** If `True` it is assumed that traces are background corrected. This sets the bounds on the background intensity to `[-threshold, threshold]` and the default lower bound on the single fluorophore intensity to `threshold`. If `False` the bounds on the background intensity are set based on the minimum background intensity in the dataset `min_bg`: `[min_bg, min_bg + threshold]`. If `False` the default lower bound on the single fluorophore intensity is also `min_bg + threshold`.  
+**percentile_step (default 90)** Sets the bounds on the single fluorophore intensity. If one value is provided, the upper bound on the single fluorophore intensity is set at this percentile. If two values are provided, as in the example above, lower and upper bounds are set at the percentiles respectively.  
+**length_laststep (default 20)** Minimum number of frames between the last two steps.
+
+### Step refinement
+
+The step refinement is based on the posterior as defined in ...
+
+Most of the optional parameters aim to reduce runtime by reducing the number of possible step arrangements to test. The optional parameters of the step refinement can also be set by providing a dictionary as an optional argument in `quickpbsa.pbsa_file()`:
+```python
+import quickpbsa as pbsa
+pardict = {'mult_threshold': 1.5,
+           'combcutoff': int(5e6)}
+pbsa.pbsa_file(file, threshold, maxiter, refinement_optional=pardict)
+```
+Possible parameters are:
+
+**multstep_fraction (default 0.5)** Maximum fraction of steps with an occupancy higher than 1.  
+**nonegatives (default False)** If `True`, no negative double steps are considered. This means that arrangements where 2 or more fluorophore turn back on at the same time are not considered.  
+**mult_threshold (1.0)** Only steps where the difference in the mean is above `mult_threshold` multiplied by the last fluorophore intensity are considered as steps with occupancy higher than 1.  
+**combcutoff (default 1000000)** Maximum number of arrangements to test. If this is exceeded, the trace is flagged out with flag `-7`. If this happens a lot, consider increasing this value, which will increase runtime.  
+**splitcomb (default 30000)** How many arrangements to test simultaneously (vectorized). On systems with a large memory this can be increased to speed up the analysis.  
+**maxmult (default 5)** Maximum considered occupancy, i.e. how many fluorophores can bleach simultaneously.  
+**maxadded (default 5)** Maximum number of added single steps if no steps are removed to yield an improved posterior.  
+**lambda (default 0.1)** Hyperparameter $\lambda$ in equation (1).  
+**gamma0 (default 0.5)** Hyperparameter $\gamma_0$ in equation (1).
 
 ## Examples
 
 Detailed examples with a more in-depth explanation of the algorithm are available in two jupyter notebooks explaining how the analysis works on an example trace (Examples/Example_Trace.ipynb) and an example tiff-stack (Examples/Example_Stack.ipynb) with the included experimental example data. You will need to install [jupyter](https://jupyter.org/) and [matplotlib](https://matplotlib.org/) to run the examples.
-
-## Function Reference
 
 
 
