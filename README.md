@@ -22,9 +22,11 @@ GPLv3
 ## Installation
 
 The recommended way to install is via pip:
-'''
+
+´´´python
 pip install quickpbsa
-'''
+´´´
+
 Alternatively you can clone / download the git repository and place the directory quickpbsa/quickpbsa in your $PYTHONPATH.
 
 ## Getting Started
