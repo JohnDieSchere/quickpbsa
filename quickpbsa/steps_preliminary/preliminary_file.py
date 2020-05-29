@@ -56,6 +56,7 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
     # crop traces if specified (does not actually cut the data, only ignores part of it for analysis purposes)
     if crop:
         crop_index = crop_traces(Traces, threshold/2, bgframes)
+    print(crop_index)
 
     # Prepare output dataframe
     outputs = ['trace', 'kv_mean', 'kv_sdev', 'fluors_intensity', 'fluors_kv']

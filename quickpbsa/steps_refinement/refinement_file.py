@@ -12,7 +12,7 @@ import logging
 import os
 import time
 
-from .improve_steps import improve_steps
+from .improve_steps import improve_steps_single
 from ..helpers import export_csv
 from .helpers import read_kvresult
 from .helpers import step2_from_json
@@ -95,7 +95,7 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
     # calculate average last step
     avg_laststep = np.mean(laststep[(flags[flagsel1] == 0) | (flags[flagsel1] == 1)])
     
-    return flags, avg_laststep
+    return flags, avg_laststep, laststep, bg
 
 
 
@@ -148,8 +148,8 @@ def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, lengt
     kvjsondata = json.load(fp)
     fp.close()
     # generate flages
-    flags, avg_laststep = generate_flags(kvjsondata, parameters['KV_threshold'],
-                                         subtracted, percentile_step, length_laststep)
+    flags, avg_laststep, laststep, bg = generate_flags(kvjsondata, parameters['KV_threshold'],
+                                                       subtracted, percentile_step, length_laststep)
     result_out['flag'] = np.repeat(flags, 7)
     # result array
     result_array = np.zeros([N_traces*len(outputs), N_frames])
@@ -178,11 +178,11 @@ def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, lengt
             variances = np.array(kvjsondata['variances'][K])
             posbysic = np.array(kvjsondata['posbysic'][K])
             # call to improve steps
-            success, sicmin, steppos_out, steps_out = improve_steps(Traces[K, :], steppos_kv,
-                                                                    means, variances, posbysic,
-                                                                    maxmult, lamb, gamma0, multstep_fraction,
-                                                                    nonegatives, mult_threshold, maxadded,
-                                                                    splitcomb, combcutoff)
+            success, sicmin, steppos_out, steps_out = improve_steps_single(Traces[K, :], steppos_kv,
+                                                                           means, variances, posbysic,
+                                                                           maxmult, lamb, gamma0, multstep_fraction,
+                                                                           nonegatives, mult_threshold, maxadded,
+                                                                           splitcomb, combcutoff)
             tracetime.append(time.time()-tic)
             if success:
                 result_out.loc[7*K:7*(K + 1), 'flag'] = 1

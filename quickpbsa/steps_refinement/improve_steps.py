@@ -10,9 +10,9 @@ import numpy as np
 from .refinement_lowlevel import find_multstep
 from .refinement_lowlevel import add_step
 
-def improve_steps(data, jpos, means, variances, posbysic, maxmult = 5, lamb = 0.1, gamma0 = 0.5, \
-                  multstep_fraction = 0.5, nonegatives = False, threshold = 1, maxadded = 5, \
-                  splitcomb = 30000, combcutoff = 500000):
+def improve_steps_single(data, jpos, means, variances, posbysic, maxmult = 5, lamb = 0.1, gamma0 = 0.5, \
+                         multstep_fraction = 0.5, nonegatives = False, threshold = 1, maxadded = 5, \
+                         splitcomb = 30000, combcutoff = 500000):
     ''' Refine the steps found by Kalafut Vischer. The algorithm will first find multiple steps, 
     then remove the steps in the inverse order in which they were found by KV and again find multiple steps.
     The first 2 steps are always left in place,  since they are crucial for the function of the algorithm.

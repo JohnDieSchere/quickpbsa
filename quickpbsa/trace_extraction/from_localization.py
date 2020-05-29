@@ -18,7 +18,7 @@ from .helpers import traces_from_stack
 from ..helpers import export_csv
 
 def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_dist,
-                                pix_size=None, roifile=None, range_sigma=None, binning=1):
+                                pix_size=None, roifile=None, filters={}, binning=1):
     ''' Extract bleach and background traces from tiff stack based on localization output (e.g. ThunderSTORM)
     and write them into .csv files
     Parameters:
@@ -38,11 +38,12 @@ def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_di
     if pix_size is not None:
         pardict['pix_size'] = pix_size
     pardict.update({'r_peak': r_peak,
-                    'r_bg1': r_bg1, \
-                    'r_bg2': r_bg2, \
-                    'min_dist': min_dist, \
-                    'range_sigma': range_sigma, \
+                    'r_bg1': r_bg1,
+                    'r_bg2': r_bg2,
+                    'min_dist': min_dist,
                     'binning': binning})
+    for k in filters:
+        pardict[k + '_range'] = filters[k]
 
     # Read in coordinate file
     loc_df = pd.read_csv(locfile)
@@ -103,10 +104,12 @@ def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_di
     # remove intersection with rbg_1 from other points
     bgsel = np.ravel(bgsel)
     bg1sel = ind[dist < r_bg1**2]
-    intersect, intersectind1, intersectind2 = np.intersect1d(bgsel, bg1sel, return_indices = True)
+    intersect, intersectind1, intersectind2 = np.intersect1d(bgsel, bg1sel,
+                                                             return_indices=True)
     while len(intersect) > 0:
         bgsel[intersectind1] = 0
-        intersect, intersectind1, intersectind2 = np.intersect1d(bgsel, bg1sel, return_indices = True)
+        intersect, intersectind1, intersectind2 = np.intersect1d(bgsel, bg1sel,
+                                                                 return_indices=True)
     # reshape and remove distance filtered points
     bgsel = np.reshape(bgsel, np.shape(ind))
     bgsel = bgsel[:, distfilter]
@@ -128,7 +131,8 @@ def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_di
         # assumes mask is 8bit image with white selection
         roi = np.ravel(tifffile.imread(roifile))
         roi_ind = np.where(roi)[0]
-        intersect, ind1, ind2 = np.intersect1d(center, roi_ind, return_indices = True)
+        intersect, ind1, ind2 = np.intersect1d(center, roi_ind,
+                                               return_indices=True)
         center = center[ind1]
         loc_df = loc_df.iloc[ind1, :]
         peaksel = peaksel[:, ind1]
@@ -136,17 +140,16 @@ def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_di
         bgsel = bgsel[:, ind1]
         bgpix = bgpix[ind1]
     
-    #### optional sigma filtering #############################################
-    if pardict['range_sigma'] is not None:
-        # ERROR HERE IF NO SIGMA IN loc_df
-        sigma = np.array(loc_df['sigma [nm]'])
-        sigmafilter = (sigma > range_sigma[0]) & (sigma < range_sigma[1])
-        loc_df = loc_df.iloc[sigmafilter, :]
-        peaksel = peaksel[:, sigmafilter]
-        peakpix = peakpix[sigmafilter]
-        bgsel = bgsel[:, sigmafilter]
-        bgpix = bgpix[sigmafilter]
-        center = center[sigmafilter]
+    #### optional filtering ###################################################
+    for k in filters:
+        data_k = np.array(loc_df[k])
+        filter_selection = (data_k > filters[k][0]) & (data_k < filters[k][1])
+        loc_df = loc_df.iloc[filter_selection, :]
+        peaksel = peaksel[:, filter_selection]
+        peakpix = peakpix[filter_selection]
+        bgsel = bgsel[:, filter_selection]
+        bgpix = bgpix[filter_selection]
+        center = center[filter_selection]
         
     #### save peak and background selection masks #############################
     outpath, fn = os.path.split(locfile)
