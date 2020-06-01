@@ -56,10 +56,9 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
     # crop traces if specified (does not actually cut the data, only ignores part of it for analysis purposes)
     if crop:
         crop_index = crop_traces(Traces, threshold/2, bgframes)
-    print(crop_index)
 
     # Prepare output dataframe
-    outputs = ['trace', 'kv_mean', 'kv_sdev', 'fluors_intensity', 'fluors_kv']
+    outputs = ['trace', 'kv_mean', 'kv_variance', 'fluors_intensity', 'fluors_kv']
     if np.size(basedf) == 0:
         result_out = pd.DataFrame()
     else:
@@ -113,9 +112,9 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
             result_array[5*K + 2, :] = np.repeat(variances, diffs)
             result_array[5*K + 3, :] = np.repeat(fluors_intensity, diffs)
             result_array[5*K + 4, :] = np.repeat(fluors_kv, diffs)
-            result_out.loc[5*K:5*(K + 1), 'KV_cutind'] = N_frames - crop_index[K]
-            result_out.loc[5*K:5*(K + 1), 'KV_time [s]'] = tracetime[-1]
-            result_out.loc[5*K:5*(K + 1), 'KV_iter'] = numiter
+            result_out.loc[5*K:5*(K + 1), 'crop_index'] = N_frames - crop_index[K]
+            result_out.loc[5*K:5*(K + 1), 'kv_time [s]'] = tracetime[-1]
+            result_out.loc[5*K:5*(K + 1), 'kv_iter'] = numiter
             result_out.loc[5*K:5*(K + 1), 'laststep'] = means[1]
             result_out.loc[5*K:5*(K + 1), 'sdev_laststep'] = np.sqrt(variances[1])
             result_out.loc[5*K:5*(K + 1), 'bg'] = means[0]
@@ -123,9 +122,9 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
             result_out.loc[5*K:5*(K + 1), 'flag'] = 1
         else:
             # no steps in this trace
-            result_out.loc[5*K:5*(K + 1), 'KV_cutind'] = N_frames - crop_index[K]
-            result_out.loc[5*K:5*(K + 1), 'KV_time [s]'] = tracetime[-1]
-            result_out.loc[5*K:5*(K + 1), 'KV_iter'] = numiter
+            result_out.loc[5*K:5*(K + 1), 'crop_index'] = N_frames - crop_index[K]
+            result_out.loc[5*K:5*(K + 1), 'kv_time [s]'] = tracetime[-1]
+            result_out.loc[5*K:5*(K + 1), 'kv_iter'] = numiter
             result_out.loc[5*K:5*(K + 1), 'bg'] = means[0]
             result_out.loc[5*K:5*(K + 1), 'sdev_bg'] = np.sqrt(variances[0])
             result_out.loc[5*K:5*(K + 1), 'flag'] = -1

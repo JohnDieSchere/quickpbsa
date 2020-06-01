@@ -95,7 +95,7 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
     # calculate average last step
     avg_laststep = np.mean(laststep[(flags[flagsel1] == 0) | (flags[flagsel1] == 1)])
     
-    return flags, avg_laststep, laststep, bg
+    return flags, avg_laststep
 
 
 
@@ -135,7 +135,7 @@ def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, lengt
     Traces = np.fliplr(Traces)
     
     # Prepare output dataframe
-    outputs = ['trace', 'kv_mean', 'kv_sdev', 'fluors_intensity',
+    outputs = ['trace', 'kv_mean', 'kv_variance', 'fluors_intensity',
                'fluors_kv', 'fluors_avgintensity', 'fluors_full']
     result_out = basedf.iloc[np.repeat(np.arange(N_traces), len(outputs))]
     result_out = result_out.reset_index(drop=True)
@@ -148,8 +148,8 @@ def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, lengt
     kvjsondata = json.load(fp)
     fp.close()
     # generate flages
-    flags, avg_laststep, laststep, bg = generate_flags(kvjsondata, parameters['KV_threshold'],
-                                                       subtracted, percentile_step, length_laststep)
+    flags, avg_laststep = generate_flags(kvjsondata, parameters['KV_threshold'],
+                                         subtracted, percentile_step, length_laststep)
     result_out['flag'] = np.repeat(flags, 7)
     # result array
     result_array = np.zeros([N_traces*len(outputs), N_frames])

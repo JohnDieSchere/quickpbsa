@@ -103,6 +103,10 @@ def kv_from_json(jsonfile, parameters, resultdf, result_array):
                 resultdf.loc[5*K:5*(K + 1), 'crop_index'] = jsondata['crop_index'][K]
                 resultdf.loc[5*K:5*(K + 1), 'kv_time [s]'] = jsondata['kv_time'][K]
                 resultdf.loc[5*K:5*(K + 1), 'kv_iter'] = jsondata['kv_iter'][K]
+                resultdf.loc[5*K:5*(K + 1), 'laststep'] = jsondata['means'][K][1]
+                resultdf.loc[5*K:5*(K + 1), 'sdev_laststep'] = np.sqrt(jsondata['variances'][K][1])
+                resultdf.loc[5*K:5*(K + 1), 'bg'] = jsondata['means'][K][0]
+                resultdf.loc[5*K:5*(K + 1), 'sdev_bg'] = np.sqrt(jsondata['variances'][K][0])
                 resultdf.loc[5*K:5*(K + 1), 'flag'] = 1
             else:
                 # no steps
@@ -111,6 +115,8 @@ def kv_from_json(jsonfile, parameters, resultdf, result_array):
                 resultdf.loc[5*K:5*(K + 1), 'crop_index'] = jsondata['crop_index'][K]
                 resultdf.loc[5*K:5*(K + 1), 'kv_time [s]'] = jsondata['kv_time'][K]
                 resultdf.loc[5*K:5*(K + 1), 'kv_iter'] = jsondata['kv_iter'][K]
+                resultdf.loc[5*K:5*(K + 1), 'bg'] = jsondata['means'][K][0]
+                resultdf.loc[5*K:5*(K + 1), 'sdev_bg'] = np.sqrt(jsondata['variances'][K][0])
                 resultdf.loc[5*K:5*(K + 1), 'flag'] =  -1
     else:
         starttrace = 0
