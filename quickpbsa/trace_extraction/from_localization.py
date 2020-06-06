@@ -149,7 +149,6 @@ def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_di
         peakpix = peakpix[filter_selection]
         bgsel = bgsel[:, filter_selection]
         bgpix = bgpix[filter_selection]
-        center = center[filter_selection]
         
     #### save peak and background selection masks #############################
     outpath, fn = os.path.split(locfile)

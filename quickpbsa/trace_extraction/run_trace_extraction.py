@@ -16,7 +16,7 @@ from .from_mask import extract_traces_mask
 
 def run_extraction_localization(folder, r_peak, r_bg1, r_bg2, min_dist,
                                 resultsfolder='results', locfile_id='tsoutput.csv',
-                                range_sigma=None, binning=1, pix_size=None):
+                                filters={}, binning=1, pix_size=None):
     folder = os.path.normpath(folder)
     files = sorted(glob(folder + '/*.tif'))
     for file in files:
@@ -28,7 +28,7 @@ def run_extraction_localization(folder, r_peak, r_bg1, r_bg2, min_dist,
             roifile = None
         if os.path.isfile(locfile):
             extract_traces_localization(file, locfile, r_peak, r_bg1, r_bg2, min_dist,
-                                        roifile=roifile, range_sigma=range_sigma,
+                                        roifile=roifile, filters=filters,
                                         binning=binning)            
     return
 
