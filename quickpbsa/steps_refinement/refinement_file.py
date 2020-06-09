@@ -215,7 +215,7 @@ def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, lengt
             # update json
             step2_to_json(jsonfile, parameters, steppos_kv, steps_out, 0, 0, 1)
             # diffs (frames between steps)
-            diffs = np.diff(np.hstack([0, steppos_out, N_frames]))
+            diffs = np.diff(np.hstack([0, steppos_kv, N_frames]))
             # fluors from steps
             fluors = np.cumsum(np.hstack([0, steps_out]))
             # write result into array
