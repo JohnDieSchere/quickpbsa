@@ -19,18 +19,38 @@ from .helpers import export_mask
 from .helpers import traces_from_stack
 
 def extract_traces_mask(tiffstack, maskfile, dist, r_bg, roifile=None,
-                        binning=1, range_area=None, range_size = None):
-    ''' Extract bleach and background traces from tiff stack based on 8bit mask image to select peak regions
-    and write them into .csv files
-    Parameters:
-    tiffstack: path to tiff stack
-    maskfile: path to segmentation mask
-    dist: distance of background to segmentation
-    r_bg: width of background ROI
-    roifile: path to area selection mask (optional)
-    binning: binning in time (frames) (default 1)
-    range_area: filter selections over area (in pixels)
-    range_size: filter selections over size (biggest distance between included pixels)
+                        range_area=None, range_size=None, binning=1):
+    ''' Extract bleach and background traces from tiff stack based on mask image
+    
+    Parameters
+    __________
+    
+    tiffstack : str
+        Path to input file (should be a tiff stack)
+    maskfile : str
+        Path to mask file (should be 8bit .tif, with white selection on black background)
+    dist : float
+        Distance between the selextion and the background ring [pix]
+    r_bg : float
+        Width of the background ring [pix]
+    roifile : str, optional
+        8 bit image to select region of interest (default None)
+    range area : list, optional
+        Limits for the area of selections [pix]
+    range_size : list, optional
+        Limits for the length of the major axis of selections [pix]
+    binning : int, optional
+        binning in time (frames) (default 1)
+        
+    Returns
+    _______
+    
+    peak : array
+        Peak traces
+    bg : array
+        Background traces
+    difference : array
+        Difference Traces
     '''
     
     # generate parameter dictionary

@@ -34,24 +34,66 @@ def pbsa_file(infile, threshold, maxiter, outfolder=None,
             output folder for the result files. If not provided output will be saved
             to the directory of the input file.
         preliminary_optional : dict, optional
-            Optional parameters for preliminary step detection. For a list of
-            possible parameters see documentation.
+            Optional parameters for preliminary step detection. Possible Parameters
+            detailed below.
         filter_optional : dict, optional
-            Optional parameters for the exclusion of traces from the analysis. For a list of
-            possible parameters see documentation.
+            Optional parameters for the exclusion of traces from the analysis. Possible parameters
+            detailed below.
         refinement_optional : dict, optional
-            Optional parameters for the improvement of the preliminary result.  For a list of
-            possible parameters see documentation.
+            Optional parameters for the improvement of the preliminary result. Possible parameters
+            detailed below.
             
     Returns
     _______
         result : DataFrame
             The result DataFrame, with the full analysis result designated with the
             type 'fluors_full'
+            
+    Notes
+    _____
+    
+    Possible Parameters in preliminary_optional:
+        - 'norm': divide all traces by this before analysis (default 1)
+        - 'max_memory': Maximum Memory to use in GB. If this is exceeded for long traces,\
+        a slower but less memory concuming implementation is used. (default 4.0)
+        - 'crop': Automatically crop traces for the analysis if True, based on the threshold (default True)
+        - 'bg_frames': How many timepoints to include after the crop point (default 500)
+        
+    Possible Parameters in filter_optional:
+        - 'subtracted': If `True` it is assumed that traces are background corrected.\
+        This sets the bounds on the background intensity to [-threshold, threshold]\
+        and the default lower bound on the single fluorophore intensity to threshold.\
+        If False the bounds on the background intensity are set based on the minimum\
+        background intensity in the dataset min_bg: [min_bg, min_bg + threshold].\
+        If False the default lower bound on the single fluorophore intensity is also\
+        min_bg + threshold. (Default True)
+        - 'percentile_step': Sets the bounds on the single fluorophore intensity.\
+        If one value is provided, the upper bound on the single fluorophore intensity\
+        is set at this percentile. If two values are provided, \
+        lower and upper bounds are set at the percentiles respectively. (default 90)  
+        - 'length_laststep': Minimum number of frames between the last two steps. (default 20)
+    
+    Possible Parameters in refinement_optional:      
+        - 'multstep_fraction': Maximum fraction of steps with an occupancy higher than 1 (default 0.5) 
+        - 'nonegatives': If True, no negative double steps are considered.\
+        This means that arrangements where 2 or more fluorophore turn back\
+        on at the same time are not considered. (default False)
+        - 'mult_threshold' Only steps where the difference in the mean is above\
+        mult_threshold multiplied by the last fluorophore intensity are considered\
+        as steps with occupancy higher than 1. (default 1.0) 
+        - 'combcutoff': Maximum number of arrangements to test. If this is exceeded,\
+        the trace is flagged out with flag `-7`. (default 2E6)
+        - 'splitcomb': How many arrangements to test simultaneously (vectorized). (default 30000)  
+        - 'maxmult': Maximum considered occupancy, i.e. how many fluorophores can bleach simultaneously. (default 5)  
+        - 'maxadded': Maximum number of added single steps if no steps are removed\
+        to yield an improved posterior. (default 10) 
+        - 'lambda': Hyperparameter lambda. (default 0.1)  
+        - 'gamma0': Hyperparameter gamma_0. (default 0.5)
+    
     '''
     # default Kalafut Vischer Parameters
     kv_param = {'norm': 1,
-                'max_memory': 2.0,
+                'max_memory': 4.0,
                 'crop': True,
                 'bg_frames': 500}
     kv_param.update(preliminary_optional)
@@ -63,10 +105,10 @@ def pbsa_file(infile, threshold, maxiter, outfolder=None,
     step2_param = {'multstep_fraction': 0.5,
                    'nonegatives': False,
                    'mult_threshold': 1.0,
-                   'combcutoff': 1000000,
+                   'combcutoff': 2000000,
                    'splitcomb': 30000,
                    'maxmult': 5,
-                   'maxadded': 5,
+                   'maxadded': 10,
                    'lambda': 0.1,
                    'gamma0': 0.5,}
     step2_param.update(refinement_optional)
@@ -119,17 +161,17 @@ def run_pbsa(folder, threshold, maxiter, file_id='_difference.csv',  outfolder=N
         maxiter : int
             Maximum iterations in the preliminary step detection. This should
             be significantly higher than the expected number of fluorophores.
-        file_id : str, optional
-            Default '_difference.csv'. Should be a identifier of the files to process.
-        kv_optional : dict, optional
-            Optional parameters for preliminary step detection. For a list of
-            possible parameters see documentation.
-        step2_optional : dict, optional
-            Optional parameters for the improvement of the preliminary steps. Full
-            list of possible parameters can be found in the documentation.
         outfolder : str, optional
             output folder for the result files. If not provided output will be saved
             to input folder.
+        file_id : str, optional
+            Default '_difference.csv'. Should be a identifier of the files to process.
+        preliminary_optional : dict, optional
+            Optional parameters for preliminary step detection, details in the doc of pbsa_file.
+        filter_optional : dict, optional
+            Optional parameters for the exclusion of traces from the analysis, details in the doc of pbsa_file.
+        refinement_optional : dict, optional
+            Optional parameters for the improvement of the preliminary result, details in the doc of pbsa_file.
     '''
     folder = os.path.normpath(folder)
     files = sorted(glob(folder + '/*' + file_id))

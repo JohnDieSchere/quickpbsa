@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Aug 14 12:29:12 2019
+submodule steps_preliminary
+===========================
 
-@author: johan
+Provides functions for preliminary step detection, following Kalafut & Vischer,
+Computer Physics Communication 2008 (doi.org/10.1016/j.cpc.2008.06.008)
+
+Author: Johan Hummert
+
+If you find this software useful, please reference: REF_TO_PAPER
 """
 
 from .preliminary_file import *

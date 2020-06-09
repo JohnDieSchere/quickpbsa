@@ -170,13 +170,13 @@ def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, lengt
     tracetime = []        
     # Main Loop over traces
     for K in range(starttrace, N_traces):
+        # inputs from kvjson
+        steppos_kv = np.array(kvjsondata['steppos'][K])
+        means = np.array(kvjsondata['means'][K])
+        variances = np.array(kvjsondata['variances'][K])
+        posbysic = np.array(kvjsondata['posbysic'][K])
         if flags[K] == 0:
             tic = time.time()
-            # inputs from kvjson
-            steppos_kv = np.array(kvjsondata['steppos'][K])
-            means = np.array(kvjsondata['means'][K])
-            variances = np.array(kvjsondata['variances'][K])
-            posbysic = np.array(kvjsondata['posbysic'][K])
             # call to improve steps
             success, sicmin, steppos_out, steps_out = improve_steps_single(Traces[K, :], steppos_kv,
                                                                            means, variances, posbysic,

@@ -21,16 +21,38 @@ def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_di
                                 pix_size=None, roifile=None, filters={}, binning=1):
     ''' Extract bleach and background traces from tiff stack based on localization output (e.g. ThunderSTORM)
     and write them into .csv files
-    Parameters:
-    tiffstack: path to tiff stack
-    locfile: localization file (should be .csv)
-    r_peak: peak radius [pix]
-    r_bg1: inner bg radius [pix]
-    r_bg2: outer bg radius [pix]
-    min_dist: minimum distance between peaks [pix]
-    roifile: 8 bit image to select cell outile (default None)
-    range_sigma: filter over sigma if localization returns sigma of peaks (default None)
-    binning: binning in time (frames) (default 1)
+    
+    Parameters
+    __________
+    
+    tiffstack : str
+        Path to input file (should be a tiff stack)
+    locfile : str
+        Path to localization file (should be .csv, containing the columns 'x [nm]' and 'y [nm]')
+    r_peak : float
+        peak radius [pix]
+    r_bg1 : float
+        inner bg radius [pix]
+    r_bg2 : float
+        outer bg radius [pix]
+    min_dist: float
+        minimum distance between peaks [pix]
+    roifile : str, optional
+        8 bit image to select region of interest (default None)
+    filters : dict, optional
+        Filter localizations by any column in the localization file, syntax is e.g. filters={'sigma': [40,60]}
+    binning : int, optional
+        binning in time (frames) (default 1)
+        
+    Returns
+    _______
+    
+    peak : array
+        Peak traces
+    bg : array
+        Background traces
+    difference : array
+        Difference Traces
     '''
     
     # generate parameter dictionary

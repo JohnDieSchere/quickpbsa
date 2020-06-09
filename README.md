@@ -102,7 +102,7 @@ Possible parameters are:
 **norm (default 1)** The traces will be divided by `norm` prior to analysis, mainly for visualization. `threshold` should be set lower accordingly.  
 **crop (default True)** If `True` the last frames of the trace are cropped for analysis purposes based on `threshold`. Traces are cropped at the last frame where the difference in intensity exceeds half the value of `threshold` + `bgframes`.  
 **bgframes (default 500)** How many frames to include in the analysis after the crop point.  
-**max_memory (default 2.0)** Maximum available memory for the preliminary step detection. The analysis defaults to a slower, but less memory consuming implementation if the necessary memory exceeds this value. For the default of 2 GB the fast implementation is used for traces with up to ~20000 frames.
+**max_memory (default 2.0)** Maximum available memory for the preliminary step detection. The analysis defaults to a slower, but less memory consuming implementation if the necessary memory exceeds this value. For the default of 4 GB the fast implementation is used for traces with up to ~40000 frames.
 
 ### Filtering of traces
 
@@ -146,10 +146,10 @@ Possible parameters are:
 **multstep_fraction (default 0.5)** Maximum fraction of steps with an occupancy higher than 1.  
 **nonegatives (default False)** If `True`, no negative double steps are considered. This means that arrangements where 2 or more fluorophore turn back on at the same time are not considered.  
 **mult_threshold (1.0)** Only steps where the difference in the mean is above `mult_threshold` multiplied by the last fluorophore intensity are considered as steps with occupancy higher than 1.  
-**combcutoff (default 1000000)** Maximum number of arrangements to test. If this is exceeded, the trace is flagged out with flag `-7`. If this happens a lot, consider increasing this value, which will increase runtime.  
+**combcutoff (default 2000000)** Maximum number of arrangements to test. If this is exceeded, the trace is flagged out with flag `-7`. If this happens a lot, consider increasing this value, which will increase runtime.  
 **splitcomb (default 30000)** How many arrangements to test simultaneously (vectorized). On systems with a large memory this can be increased to speed up the analysis.  
 **maxmult (default 5)** Maximum considered occupancy, i.e. how many fluorophores can bleach simultaneously.  
-**maxadded (default 5)** Maximum number of added single steps if no steps are removed to yield an improved posterior.  
+**maxadded (default 10)** Maximum number of added single steps if no steps are removed to yield an improved posterior.  
 **lambda (default 0.1)** Hyperparameter $\lambda$ in equation (1).  
 **gamma0 (default 0.5)** Hyperparameter $\gamma_0$ in equation (1).
 
