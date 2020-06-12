@@ -88,7 +88,7 @@ This photobleaching step analysis is a combination of a preliminary step detecti
 
 ### Preliminary step detection
 
-The preliminary step detection is based on the works of Kalafut and Vischer () ...
+The preliminary step detection is based on the work of Kalafut and Visscher [(10.1016/j.cpc.2008.06.008)](https://doi.org/10.1016/j.cpc.2008.06.008). In the algorithm steps are sucessively placed and the Schwarz Information Criterion is evaluated with and without the added steps. In the modified version used here steps with a step height below the `threshold` parameter are rejected.
 
 The optional parameters of the preliminary step detection can be set by providing a dictionary as an optional argument in `quickpbsa.pbsa_file()`:
 ```python
@@ -132,7 +132,7 @@ Possible parameters are:
 
 ### Step refinement
 
-The step refinement is based on the posterior as defined in ...
+The step refinement is based on the posterior as defined in the work of Teskouras et al. [(10.1091/mbc.e16-06-0404)](https://doi.org/10.1091/mbc.e16-06-0404). The refinement function iteratively minimizes this posterior starting from the result of the preliminary step detection.
 
 Most of the optional parameters aim to reduce runtime by reducing the number of possible step arrangements to test. The optional parameters of the step refinement can also be set by providing a dictionary as an optional argument in `quickpbsa.pbsa_file()`:
 ```python

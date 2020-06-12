@@ -18,7 +18,7 @@ from .helpers import traces_from_stack
 from ..helpers import export_csv
 
 def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_dist,
-                                pix_size=None, roifile=None, filters={}, binning=1):
+                                roifile=None, filters={}, binning=1, pix_size=None):
     ''' Extract bleach and background traces from tiff stack based on localization output (e.g. ThunderSTORM)
     and write them into .csv files
     
@@ -43,6 +43,9 @@ def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_di
         Filter localizations by any column in the localization file, syntax is e.g. filters={'sigma': [40,60]}
     binning : int, optional
         binning in time (frames) (default 1)
+    pix_size : float, optional
+        Define pixel size in nm. In most cases this is not necessary, since the
+        pixel size is read out from the tiff tags. (default None)
         
     Returns
     _______

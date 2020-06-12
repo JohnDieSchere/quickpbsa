@@ -58,7 +58,7 @@ def run_extraction_localization(folder, r_peak, r_bg1, r_bg2, min_dist,
             roifile = None
         if os.path.isfile(locfile):
             extract_traces_localization(file, locfile, r_peak, r_bg1, r_bg2, min_dist,
-                                        roifile, filters, binning)
+                                        roifile, filters, binning, pix_size)
     return
 
 

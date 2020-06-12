@@ -21,6 +21,9 @@ from .helpers import kv_from_json, kv_to_json
 from ..helpers import export_csv
 
 def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, crop=True, bgframes = 500):
+    '''
+    Run preliminary step detection on a .csv file with rows as photobleaching traces
+    '''
     # file names and outfolder
     folder, filename = os.path.split(infile)
     filename, ext = os.path.splitext(filename)

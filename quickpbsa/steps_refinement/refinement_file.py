@@ -22,21 +22,7 @@ from .helpers import step2_to_json
 
 def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, length_laststep=20):
     '''
-    Generate the filters based on background and last step intensity from the KV output.
-    By default the function assumes that the background is subtracted and uses the Kalafut Threshold
-    to filter. Default is bg between  - KVthreshold and KVthreshold and last step between KVthreshold and
-    a 90% percentile.
-    
-    jsondata: as returned by KV_file or saved in _kvout.json
-    
-    KVthreshold: threshold used for Kalafut Vischer
-    
-    subtracted (default True): if traces are background subtracted the KVthreshold is used for BG filtering.
-    
-    percentile_step (default 90): if one value used as upper percentile for the last step. If list of two
-    values these are used as upper and lower percentile.
-    
-    length_laststep (defaule 20): Minimum interval between last and penultimate step.
+    Flag out traces based on the last steps from the preliminary step detection
     '''
         
     # number of steps
@@ -102,6 +88,9 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
 def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, length_laststep=20,
                        maxmult=5, lamb=0.1, gamma0=0.5, multstep_fraction=0.5,
                        nonegatives=False, mult_threshold=1, maxadded=5, splitcomb=30000, combcutoff=1000000):
+    '''
+    Run the step refinement on the output files from the preliminary step detection
+    '''
     
     # file name (cleave off _kvout.csv)
     filename = '_'.join(kvout.split('_')[:-1])
