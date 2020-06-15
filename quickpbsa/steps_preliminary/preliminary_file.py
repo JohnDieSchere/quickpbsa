@@ -52,7 +52,7 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
                        'maxiter': maxiter,
                        'norm': norm,
                        'crop': crop,
-                       'bgframes': bgframes})
+                       'bg_frames': bgframes})
     # Norm and flip traces
     Traces = np.fliplr(Traces)/norm
     
@@ -124,6 +124,9 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
             result_out.loc[5*K:5*(K + 1), 'sdev_bg'] = np.sqrt(variances[0])
             result_out.loc[5*K:5*(K + 1), 'flag'] = 1
         else:
+            # fluors (zero)
+            fluors_intensity = np.array([0])
+            fluors_kv = np.array([0])
             # no steps in this trace
             result_out.loc[5*K:5*(K + 1), 'crop_index'] = N_frames - crop_index[K]
             result_out.loc[5*K:5*(K + 1), 'kv_time [s]'] = tracetime[-1]

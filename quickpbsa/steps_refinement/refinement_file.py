@@ -58,8 +58,9 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
         lower = np.percentile(laststep, percentile_step[0])
         upper = np.percentile(laststep, percentile_step[1])
     sel = np.invert((laststep > lower) & (laststep < upper))
+    print(upper, lower)
     # to not override old flags
-    ind_new = np.intersect1d(flagsel1[sel], np.where(flags == 0)[0])
+    ind_new = np.intersect1d(flagsel1[sel], np.where(flags >= 0)[0])
     flags[ind_new] =  -3    
     
     # trace means goes into negative values
@@ -81,6 +82,7 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
     # calculate average last step
     avg_laststep = np.mean(laststep[(flags[flagsel1] == 0) | (flags[flagsel1] == 1)])
     
+    print(flags)
     return flags, avg_laststep
 
 
@@ -224,7 +226,7 @@ def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, lengt
     # write result
     result_out = export_csv(result_out, result_array, outfile, parameters, comment)
     # log
-    logmessage = '{:d} Traces, avg runtime {:.2f}s'.format(len(tracetime), np.mean(tracetime))
+    logmessage = '{:d} Traces, avg runtime {:.2f}s'.format(N_traces, np.mean(tracetime))
     logger.info('Finished step 2 for ' + logmessage)
     
     return result_out

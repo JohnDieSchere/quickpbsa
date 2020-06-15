@@ -129,7 +129,7 @@ def pbsa_file(infile, threshold, maxiter, outfolder=None,
                                       kv_param['norm'],
                                       kv_param['max_memory'],
                                       kv_param['crop'],
-                                      kv_param['bgframes'])
+                                      kv_param['bg_frames'])
     # step refinement
     result_out = improve_steps_file(kvfile, jsonfile,
                                     filter_param['subtracted'],
