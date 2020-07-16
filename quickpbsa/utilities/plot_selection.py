@@ -41,7 +41,7 @@ def outline_boolean(data):
 
 
 def selection_svg_fromtif(file, fig=None, ax=None, outfile=None, color='w'):
-    data = tifffile.imread(file).astpye(bool)
+    data = tifffile.imread(file).astype(bool)
     data = np.invert(data)
     pix = np.shape(data)
     y, hstarts, hends, x, vstarts, vends = outline_boolean(data)
@@ -65,7 +65,7 @@ def selection_svg_fromtif(file, fig=None, ax=None, outfile=None, color='w'):
 
 
 
-def selection_svg_fromcsv(file, ids, outfile = None, fig = None, ax = None):
+def selection_svg_fromcsv(file, ids, outfile = None, fig = None, ax = None, colors='w'):
     # read in csv data
     df = pd.read_csv(file, header = 1)
     comment = open(file).readline()
@@ -79,8 +79,10 @@ def selection_svg_fromcsv(file, ids, outfile = None, fig = None, ax = None):
         ax = fig.add_axes([0.0, 0.0, pix[1]/np.max(pix), pix[0]/np.max(pix)])
         newfig = True
     i = 0
+    if isinstance(colors, str):
+        colors = [colors,] * len(ids)
     for ID in ids:
-        center = int(df.loc[df['id'] == ID, 'center'])
+        center = int(df.loc[df['id'] == ID, 'center_pix'])
         ar = np.squeeze(np.array(df.loc[df['id'] == ID, '0':]).astype(bool))
         size = int(np.sqrt(len(ar)))
         ar = ar.reshape([size, size])
@@ -89,8 +91,8 @@ def selection_svg_fromcsv(file, ids, outfile = None, fig = None, ax = None):
         cx = center%pix[1]
         yoff = cy - int(size/2) - .5
         xoff = cx - int(size/2) - .5
-        ax.hlines(y + yoff, hstart + xoff, hend + xoff, color = 'C' + str(i%5))
-        ax.vlines(x + xoff, vstart + yoff, vend + yoff, color = 'C' + str(i%5))
+        ax.hlines(y + yoff, hstart + xoff, hend + xoff, color=colors[i])
+        ax.vlines(x + xoff, vstart + yoff, vend + yoff, color=colors[i])
         i += 1
     # plot
     if newfig:

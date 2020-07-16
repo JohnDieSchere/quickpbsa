@@ -174,6 +174,11 @@ def run_pbsa(folder, threshold, maxiter, file_id='_difference.csv',  outfolder=N
             Optional parameters for the improvement of the preliminary result, details in the doc of pbsa_file.
     '''
     folder = os.path.normpath(folder)
+    if outfolder is None:
+        outfolder = os.path.normpath(folder) + '/'
+    else:
+        outfolder = os.path.normpath(outfolder) + '/'
+    os.makedirs(outfolder, exist_ok=True)
     files = sorted(glob(folder + '/*' + file_id))
     for file in files:
         pbsa_file(file, threshold, maxiter, outfolder,

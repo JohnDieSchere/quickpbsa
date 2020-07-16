@@ -58,7 +58,6 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
         lower = np.percentile(laststep, percentile_step[0])
         upper = np.percentile(laststep, percentile_step[1])
     sel = np.invert((laststep > lower) & (laststep < upper))
-    print(upper, lower)
     # to not override old flags
     ind_new = np.intersect1d(flagsel1[sel], np.where(flags >= 0)[0])
     flags[ind_new] =  -3    
@@ -82,7 +81,6 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
     # calculate average last step
     avg_laststep = np.mean(laststep[(flags[flagsel1] == 0) | (flags[flagsel1] == 1)])
     
-    print(flags)
     return flags, avg_laststep
 
 
