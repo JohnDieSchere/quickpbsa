@@ -6,7 +6,10 @@
 **License:** GPLv3  
 **Version:** 2020.0.1
 
-Python Package providing a framework for photo-bleaching step analysis. The details of the algorithm used and extensive validation with experimental data are described in a bioRxiv preprint ().
+Python Package providing a framework for photo-bleaching step analysis. The details of the algorithm used and extensive validation with experimental data are described in a bioRxiv preprint:
+
+[https://doi.org/10.1101/2020.08.26.268086](https://doi.org/10.1101/2020.08.26.268086)
+
 please cite this publication if you found this package useful.
 
 ## Dependencies
