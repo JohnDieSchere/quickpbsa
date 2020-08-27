@@ -18,7 +18,7 @@ setuptools.setup(name='quickpbsa',
                  long_description=readme(),
                  classifiers=[
                               'Development Status :: 3 - Alpha',
-                              'GPLv3 License',
+                              'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
                               'Programming Language :: Python :: 3',
                               'Topic :: Scientific/Engineering',
                               ],
