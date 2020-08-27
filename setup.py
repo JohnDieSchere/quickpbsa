@@ -16,6 +16,7 @@ setuptools.setup(name='quickpbsa',
                  version='2020.0.1',
                  description='Fast and Complete Photobleaching Step Analysis',
                  long_description=readme(),
+                 long_description_content_type='text/markdown',
                  classifiers=[
                               'Development Status :: 3 - Alpha',
                               'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
