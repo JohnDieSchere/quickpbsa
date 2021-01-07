@@ -8,19 +8,68 @@ Created on Wed Aug 14 12:29:12 2019
 
 import numpy as np
 import os
-import pandas as pd
 import logging
 import time
+import multiprocessing as mp
 
 # relative imports
 from .kv_lowlevel import kv_single_fast
 from .kv_lowlevel import kv_single
 from .helpers import read_tracedf
 from .helpers import crop_traces
-from .helpers import kv_from_json, kv_to_json
+from .helpers import kv_from_json, kv_to_json, result_from_json
 from ..helpers import export_csv
 
-def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, crop=True, bgframes = 500):
+
+def worker(trace_index, trace, threshold, maxiter, max_memory, Q):
+    tic = time.time()
+    result = [trace_index]
+    if len(trace)**2*4/1e9 < max_memory:
+        # faster but memory consuming for long traces ( > 10000)
+        result.append(kv_single_fast(trace, threshold, maxiter))
+    else:
+        # slower but less memory consuming
+        result.append(kv_single(trace, threshold, maxiter))
+    result.append(time.time() - tic)
+    Q.put(result)
+    return result
+
+
+def listener(Q, crop_index, jsonfile, parameters, logger):
+    while True:
+        result = Q.get()
+        if result == 'kill':
+            break
+        trace_index = result[0]
+        # kv result
+        steppos, means, variances, posbysic, kv_iter = result[1]
+        # correct for cropping
+        steppos = steppos + crop_index[trace_index]
+        posbysic = posbysic + crop_index[trace_index]
+        if len(steppos) > 0:
+            # calculate fluors by intensity
+            means_sub = means - means[0]
+            fluors_intensity = np.round(means_sub/means_sub[1]).astype(int)
+            # calculate fluors by steps
+            stepsigns = np.sign(np.diff(means)) #sign of steps
+            fluors_kv = np.cumsum(np.hstack((0, stepsigns)))
+        else:
+            # fluors (zero)
+            fluors_intensity = np.array([0])
+            fluors_kv = np.array([0])
+        kv_time = result[2]
+        # write to json file
+        kv_to_json(jsonfile, parameters, trace_index, steppos, means, variances, posbysic,
+                    fluors_intensity, fluors_kv, 0, kv_time, kv_iter)
+        # write to log
+        logmessage = 'trace {:d}, {:d} iterations, runtime {:.2f}s'.format(trace_index, kv_iter, kv_time)
+        logger.info('Finished KV ' + logmessage)
+    return
+        
+    
+
+
+def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, crop=True, bgframes = 500, num_cores=2):
     '''
     Run preliminary step detection on a .csv file with rows as photobleaching traces
     '''
@@ -59,95 +108,49 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
     # crop traces if specified (does not actually cut the data, only ignores part of it for analysis purposes)
     if crop:
         crop_index = crop_traces(Traces, threshold/2, bgframes)
-
-    # Prepare output dataframe
-    outputs = ['trace', 'kv_mean', 'kv_variance', 'fluors_intensity', 'fluors_kv']
-    if np.size(basedf) == 0:
-        result_out = pd.DataFrame()
-    else:
-        result_out = basedf.iloc[np.repeat(np.arange(N_traces), len(outputs))]
-        result_out = result_out.reset_index(drop=True)
-    result_out['crop_index'] = 0
-    result_out['kv_time [s]'] = 0
-    result_out['kv_iter'] = 0
-    result_out['laststep'] = 0
-    result_out['sdev_laststep'] = 0
-    result_out['bg'] = 0
-    result_out['sdev_bg'] = 0
-    result_out['flag'] = 0
-    result_out['type'] = outputs*N_traces
-    
-    # result array
-    result_array = np.zeros([N_traces*len(outputs), N_frames])
-    result_array[np.arange(0, N_traces*len(outputs), len(outputs)), :] = Traces
     
     # import json
     if os.path.isfile(jsonfile):
-        starttrace = kv_from_json(jsonfile, parameters, result_out, result_array)
+        trace_indices = kv_from_json(jsonfile, parameters, N_traces)
     else:
-        starttrace = 0
+        trace_indices = np.arange(N_traces)
     
-    tracetime = []        
-    # Main Loop over traces
-    for K in range(starttrace, N_traces):
-        tic = time.time()
+    # need at least 2 cores for listener and worker
+    if num_cores < 2:
+        num_cores = 2
+    
+    # Set up pool of workers
+    manager = mp.Manager()
+    Q = manager.Queue()    
+    pool = mp.Pool(num_cores)
+    
+    # start listener
+    pool.apply_async(listener,
+                     (Q, crop_index, jsonfile, parameters, logger))
+    
+    jobs = []      
+    # Start workers on traces
+    for K in trace_indices:
         # cropped trace
         trace = Traces[K, crop_index[K]:]
-        if N_frames**2*4/1e9 < max_memory:
-            # faster but memory consuming for long traces ( > 10000)
-            steppos, means, variances, posbysic, numiter = kv_single_fast(trace, threshold, maxiter)
-        else:
-            # slower but less memory consuming
-            steppos, means, vari, posbysic, numiter = kv_single(trace, threshold, maxiter)
-        tracetime.append(time.time() - tic)
-        steppos = steppos + crop_index[K]
-        posbysic = posbysic + crop_index[K]
-        if len(steppos) > 0:
-            # calculate fluors by intensity
-            means_sub = means - means[0]
-            fluors_intensity = np.round(means_sub/means_sub[1]).astype(int)
-            # calculate fluors by steps
-            stepsigns = np.sign(np.diff(means)) #sign of steps
-            fluors_kv = np.cumsum(np.hstack((0, stepsigns)))
-            # write into result array
-            diffs = np.diff(np.hstack([0, steppos, N_frames]))
-            result_array[5*K + 1, :] = np.repeat(means, diffs)
-            result_array[5*K + 2, :] = np.repeat(variances, diffs)
-            result_array[5*K + 3, :] = np.repeat(fluors_intensity, diffs)
-            result_array[5*K + 4, :] = np.repeat(fluors_kv, diffs)
-            result_out.loc[5*K:5*(K + 1), 'crop_index'] = N_frames - crop_index[K]
-            result_out.loc[5*K:5*(K + 1), 'kv_time [s]'] = tracetime[-1]
-            result_out.loc[5*K:5*(K + 1), 'kv_iter'] = numiter
-            result_out.loc[5*K:5*(K + 1), 'laststep'] = means[1]
-            result_out.loc[5*K:5*(K + 1), 'sdev_laststep'] = np.sqrt(variances[1])
-            result_out.loc[5*K:5*(K + 1), 'bg'] = means[0]
-            result_out.loc[5*K:5*(K + 1), 'sdev_bg'] = np.sqrt(variances[0])
-            result_out.loc[5*K:5*(K + 1), 'flag'] = 1
-        else:
-            # fluors (zero)
-            fluors_intensity = np.array([0])
-            fluors_kv = np.array([0])
-            # no steps in this trace
-            result_out.loc[5*K:5*(K + 1), 'crop_index'] = N_frames - crop_index[K]
-            result_out.loc[5*K:5*(K + 1), 'kv_time [s]'] = tracetime[-1]
-            result_out.loc[5*K:5*(K + 1), 'kv_iter'] = numiter
-            result_out.loc[5*K:5*(K + 1), 'bg'] = means[0]
-            result_out.loc[5*K:5*(K + 1), 'sdev_bg'] = np.sqrt(variances[0])
-            result_out.loc[5*K:5*(K + 1), 'flag'] = -1
+        job = pool.apply_async(worker,
+                               (K, trace, threshold, maxiter, max_memory, Q))
+        jobs.append(job)
         
-        # update json file
-        kv_to_json(jsonfile, parameters, steppos, means, variances, posbysic,
-                   fluors_intensity, fluors_kv, crop_index[K], tracetime[-1], numiter)
-        # log
-        logmessage = 'trace {:d}, {:d} iterations, runtime {:.2f}s'.format(K, numiter, tracetime[-1])
-        logger.info('Finished KV ' + logmessage)
-    
-    #flip result back
-    result_array = np.fliplr(result_array)
+    # collect results from the workers through the pool result queue
+    for job in jobs:
+        job.get()
+
+    #now we are done, kill the listener
+    Q.put('kill')
+    pool.close()
+    pool.join()
+        
     # write result
+    result_out, result_array = result_from_json(jsonfile, Traces, basedf)
     result_out = export_csv(result_out, result_array, outfile, parameters, comment)
     # log
-    logmessage = '{:d} Traces, avg runtime {:.2f}s'.format(len(tracetime), np.mean(tracetime))
+    logmessage = '{:d} Traces'.format(len(trace_indices))
     logger.info('Finished KV for ' + logmessage)
     
     return result_out, outfile, jsonfile

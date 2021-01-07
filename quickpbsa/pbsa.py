@@ -15,7 +15,7 @@ from glob import glob
 from .steps_preliminary import kv_file
 from .steps_refinement import improve_steps_file
 
-def pbsa_file(infile, threshold, maxiter, outfolder=None,
+def pbsa_file(infile, threshold, maxiter, outfolder=None, num_cores=2,
               preliminary_optional={}, filter_optional={}, refinement_optional={}):
     ''' Run the full photobleaching step analysis on a single file.
     
@@ -129,7 +129,8 @@ def pbsa_file(infile, threshold, maxiter, outfolder=None,
                                       kv_param['norm'],
                                       kv_param['max_memory'],
                                       kv_param['crop'],
-                                      kv_param['bg_frames'])
+                                      kv_param['bg_frames'],
+                                      num_cores)
     # step refinement
     result_out = improve_steps_file(kvfile, jsonfile,
                                     filter_param['subtracted'],
@@ -147,7 +148,7 @@ def pbsa_file(infile, threshold, maxiter, outfolder=None,
                                     )
     return result_out
 
-def run_pbsa(folder, threshold, maxiter, file_id='_difference.csv',  outfolder=None,
+def run_pbsa(folder, threshold, maxiter, file_id='_difference.csv',  outfolder=None, num_cores=2,
              preliminary_optional={}, filter_optional={}, refinement_optional={}):
     ''' Run the full photobleaching step analysis on a all files in folder
     
@@ -224,9 +225,10 @@ def summarize_results(folder, outfile=None, avg_over=5, file_id='_result.csv'):
             first_frames = np.array(data.loc[data['type']=='trace', '0':str(avg_over-1)])
             # Intensity from first avg_over frames
             df_file['Intensity'] = np.mean(first_frames, 1)
-            # fluors at frame 0
+            # maximum fluors in the trace
             for typ in ['fluors_intensity', 'fluors_kv', 'fluors_avgintensity', 'fluors_full']:
-                df_file[typ] = np.array(data.loc[data['type'] == typ, '0']).astype(int)
+                data_typ = np.array(data.loc[data['type'] == typ, '0':]).astype(int)
+                df_file[typ] = np.max(data_typ, 1)
             # folder and file into dataframe
             df_file.insert(0, 'folder', subfolder[len(folder):])
             df_file.insert(1, 'file', file.split('/')[-1].split('.')[0])

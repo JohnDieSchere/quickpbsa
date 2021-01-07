@@ -49,10 +49,11 @@ def crop_traces(Traces, threshold, bgframes):
     return crop_index
 
 
-def kv_to_json(jsonfile, parameters, steppos, means, variances, posbysic,
+def kv_to_json(jsonfile, parameters, trace_index, steppos, means, variances, posbysic,
                fluors_intensity, fluors_kv, crop_index, kv_time, kv_iter):
     # convert to list to make arrays serializable
-    jsondata_out = {'steppos': [steppos.tolist()],
+    jsondata_out = {'trace_index': [int(trace_index)],
+                    'steppos': [steppos.tolist()],
                     'means': [means.tolist()],
                     'variances': [variances.tolist()], 
                     'posbysic': [posbysic.tolist()],
@@ -69,6 +70,7 @@ def kv_to_json(jsonfile, parameters, steppos, means, variances, posbysic,
         if jsondata_file['parameters'] == list(parameters.values()):
             jsondata_out = jsondata_file
             # convert to list to make arrays serializable
+            jsondata_out['trace_index'].append(int(trace_index))
             jsondata_out['steppos'].append(steppos.tolist())
             jsondata_out['means'].append(means.tolist())
             jsondata_out['variances'].append(variances.tolist())
@@ -84,43 +86,80 @@ def kv_to_json(jsonfile, parameters, steppos, means, variances, posbysic,
     return
 
 
-def kv_from_json(jsonfile, parameters, resultdf, result_array):
+def kv_from_json(jsonfile, parameters, N_traces):
     fp = open(jsonfile)
     jsondata = json.load(fp)
     fp.close()
+    # traces yet to be analysed
+    trace_indices = np.arange(N_traces)
     if jsondata['parameters'] == list(parameters.values()):
-        starttrace = len(jsondata['steppos'])
-        for K in range(starttrace):
-            if len(jsondata['steppos'][K]) > 0:
-                # differences, i.e. frames between steps
-                diffs = np.diff([0] + jsondata['steppos'][K] + [np.size(result_array, 1)])
-                # write results into array
-                result_array[5*K + 1, :] = np.repeat(jsondata['means'][K], diffs)
-                result_array[5*K + 2, :] = np.repeat(jsondata['variances'][K], diffs)
-                result_array[5*K + 3, :] = np.repeat(jsondata['fluors_intensity'][K], diffs)
-                result_array[5*K + 4, :] = np.repeat(jsondata['fluors_kv'][K], diffs)
-                # write metadata into results dataframe
-                resultdf.loc[5*K:5*(K + 1), 'crop_index'] = jsondata['crop_index'][K]
-                resultdf.loc[5*K:5*(K + 1), 'kv_time [s]'] = jsondata['kv_time'][K]
-                resultdf.loc[5*K:5*(K + 1), 'kv_iter'] = jsondata['kv_iter'][K]
-                resultdf.loc[5*K:5*(K + 1), 'laststep'] = jsondata['means'][K][1]
-                resultdf.loc[5*K:5*(K + 1), 'sdev_laststep'] = np.sqrt(jsondata['variances'][K][1])
-                resultdf.loc[5*K:5*(K + 1), 'bg'] = jsondata['means'][K][0]
-                resultdf.loc[5*K:5*(K + 1), 'sdev_bg'] = np.sqrt(jsondata['variances'][K][0])
-                resultdf.loc[5*K:5*(K + 1), 'flag'] = 1
-            else:
-                # no steps
-                result_array[K*5 + 1, :] = jsondata['means'][K][0]
-                result_array[K*5 + 2, :] = jsondata['variances'][K][0]
-                resultdf.loc[5*K:5*(K + 1), 'crop_index'] = jsondata['crop_index'][K]
-                resultdf.loc[5*K:5*(K + 1), 'kv_time [s]'] = jsondata['kv_time'][K]
-                resultdf.loc[5*K:5*(K + 1), 'kv_iter'] = jsondata['kv_iter'][K]
-                resultdf.loc[5*K:5*(K + 1), 'bg'] = jsondata['means'][K][0]
-                resultdf.loc[5*K:5*(K + 1), 'sdev_bg'] = np.sqrt(jsondata['variances'][K][0])
-                resultdf.loc[5*K:5*(K + 1), 'flag'] =  -1
+        analysed_traces = jsondata['trace_index']
+        # delete trace indices already in json file
+        trace_indices = np.delete(trace_indices, analysed_traces)
+    return trace_indices
+
+
+def result_from_json(jsonfile, Traces, basedf):
+    
+    N_traces, N_frames = np.shape(Traces)
+    # Prepare output dataframe
+    outputs = ['trace', 'kv_mean', 'kv_variance', 'fluors_intensity', 'fluors_kv']
+    if np.size(basedf) == 0:
+        result_out = pd.DataFrame()
     else:
-        starttrace = 0
-    return starttrace
+        result_out = basedf.iloc[np.repeat(np.arange(N_traces), len(outputs))]
+        result_out = result_out.reset_index(drop=True)
+    result_out['crop_index'] = 0
+    result_out['kv_time [s]'] = 0
+    result_out['kv_iter'] = 0
+    result_out['laststep'] = 0
+    result_out['sdev_laststep'] = 0
+    result_out['bg'] = 0
+    result_out['sdev_bg'] = 0
+    result_out['flag'] = 0
+    result_out['type'] = outputs*N_traces
+    
+    # result array
+    result_array = np.zeros([N_traces*len(outputs), N_frames])
+    result_array[np.arange(0, N_traces*len(outputs), len(outputs)), :] = Traces
+    
+    # read from json file
+    fp = open(jsonfile)
+    jsondata = json.load(fp)
+    fp.close()
+    
+    for K in jsondata['trace_index']:
+        if len(jsondata['steppos'][K]) > 0:
+            # differences, i.e. frames between steps
+            diffs = np.diff([0] + jsondata['steppos'][K] + [np.size(result_array, 1)])
+            # write results into array
+            result_array[5*K + 1, :] = np.repeat(jsondata['means'][K], diffs)
+            result_array[5*K + 2, :] = np.repeat(jsondata['variances'][K], diffs)
+            result_array[5*K + 3, :] = np.repeat(jsondata['fluors_intensity'][K], diffs)
+            result_array[5*K + 4, :] = np.repeat(jsondata['fluors_kv'][K], diffs)
+            # write metadata into results dataframe
+            result_out.loc[5*K:5*(K + 1), 'crop_index'] = jsondata['crop_index'][K]
+            result_out.loc[5*K:5*(K + 1), 'kv_time [s]'] = jsondata['kv_time'][K]
+            result_out.loc[5*K:5*(K + 1), 'kv_iter'] = jsondata['kv_iter'][K]
+            result_out.loc[5*K:5*(K + 1), 'laststep'] = jsondata['means'][K][1]
+            result_out.loc[5*K:5*(K + 1), 'sdev_laststep'] = np.sqrt(jsondata['variances'][K][1])
+            result_out.loc[5*K:5*(K + 1), 'bg'] = jsondata['means'][K][0]
+            result_out.loc[5*K:5*(K + 1), 'sdev_bg'] = np.sqrt(jsondata['variances'][K][0])
+            result_out.loc[5*K:5*(K + 1), 'flag'] = 1
+        else:
+            # no steps
+            result_array[K*5 + 1, :] = jsondata['means'][K][0]
+            result_array[K*5 + 2, :] = jsondata['variances'][K][0]
+            result_out.loc[5*K:5*(K + 1), 'crop_index'] = jsondata['crop_index'][K]
+            result_out.loc[5*K:5*(K + 1), 'kv_time [s]'] = jsondata['kv_time'][K]
+            result_out.loc[5*K:5*(K + 1), 'kv_iter'] = jsondata['kv_iter'][K]
+            result_out.loc[5*K:5*(K + 1), 'bg'] = jsondata['means'][K][0]
+            result_out.loc[5*K:5*(K + 1), 'sdev_bg'] = np.sqrt(jsondata['variances'][K][0])
+            result_out.loc[5*K:5*(K + 1), 'flag'] =  -1
+            
+    result_array = np.fliplr(result_array)
+        
+    return result_out, result_array
 
 
 
