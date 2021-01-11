@@ -145,7 +145,7 @@ def pbsa_file(infile, threshold, maxiter, outfolder=None, num_cores=2,
                                     step2_param['maxadded'],
                                     step2_param['splitcomb'],
                                     step2_param['combcutoff'],
-                                    )
+                                    num_cores)
     return result_out
 
 def run_pbsa(folder, threshold, maxiter, file_id='_difference.csv',  outfolder=None, num_cores=2,
@@ -182,7 +182,7 @@ def run_pbsa(folder, threshold, maxiter, file_id='_difference.csv',  outfolder=N
     os.makedirs(outfolder, exist_ok=True)
     files = sorted(glob(folder + '/*' + file_id))
     for file in files:
-        pbsa_file(file, threshold, maxiter, outfolder,
+        pbsa_file(file, threshold, maxiter, outfolder, num_cores,
                   preliminary_optional, filter_optional, refinement_optional)
     return
 

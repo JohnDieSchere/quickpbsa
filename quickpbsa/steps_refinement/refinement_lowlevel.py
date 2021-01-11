@@ -161,7 +161,7 @@ def add_step(data, jpos, means, variances, steps, lamb = 0.1, gamma0 = 0.5):
     # build arrays for squared diff,  variance and length
     i_in = np.cumsum(np.hstack((0, steps)))
     steploc = np.hstack((0, jpos, sz))
-    diffar = np.tile(np.array(list(map(sum, (np.split(data, jpos) - i_in*mf - mb)**2))), [sz - jpos[1], 1])
+    diffar = np.tile(np.array(list(map(sum, (np.split(data, jpos) - i_in*mf - mb)**2)), dtype=object), [sz - jpos[1], 1])
     diffar = np.hstack((diffar, np.zeros([sz - jpos[1], 1])))
     varphi = np.tile(np.hstack((i_in*vf + vb, 0)), [sz - jpos[1], 1])
     nphi = np.tile(np.hstack((np.diff(steploc), 0)), [sz - jpos[1], 1])
@@ -175,7 +175,7 @@ def add_step(data, jpos, means, variances, steps, lamb = 0.1, gamma0 = 0.5):
             if I < len(steploc) - 2:
                 # shift values after current range by one and recalculate with i  + / -  1
                 try:
-                    dd = np.array(list(map(sum, (np.split(data[steploc[I + 1]:], jpos[I + 1:] - steploc[I + 1]) - (i_in[I + 1:] + stp)*mf - mb)**2)))
+                    dd = np.array(list(map(sum, (np.split(data[steploc[I + 1]:], jpos[I + 1:] - steploc[I + 1]) - (i_in[I + 1:] + stp)*mf - mb)**2)), dtype=object)
                 except ValueError:
                     dd = np.array(list(map(sum, (np.split(data[steploc[I + 1]:], jpos[I + 1:] - steploc[I + 1]) - np.expand_dims((i_in[I + 1:] + stp)*mf - mb, axis = 1))**2)))
                 diffar[steploc[I] - jpos[1]:steploc[I + 1] - jpos[1], I + 2:] = np.tile(dd, [stepl, 1])

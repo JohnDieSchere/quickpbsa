@@ -11,12 +11,14 @@ import json
 import logging
 import os
 import time
+import multiprocessing as mp
 
 from .improve_steps import improve_steps_single
 from ..helpers import export_csv
 from .helpers import read_kvresult
 from .helpers import step2_from_json
 from .helpers import step2_to_json
+from .helpers import step2result_from_json
 
 
 
@@ -85,9 +87,48 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
 
 
 
+def worker(trace_index, trace, refinement_args, Q):
+    tic = time.time()
+    result = [trace_index]
+    res = improve_steps_single(trace, *refinement_args)
+    result.append(res)
+    if res[0]:
+        flag=1
+    else:
+        flag=-7
+    result.append(flag)
+    result.append(time.time() - tic)
+    Q.put(result)
+    return result
+
+
+def listener(Q, jsonfile, parameters, logger):
+    while True:
+        result = Q.get()
+        if result == 'kill':
+            break
+        trace_index = result[0]
+        success, sic_final, steppos, steps = result[1]
+        flag = result[2]
+        step2_time = result[3]
+        # write to json file
+        step2_to_json(jsonfile, parameters, trace_index, steppos, steps, step2_time, sic_final, flag)
+        # write to log
+        if flag == 1:
+            logmessage = 'successful for {:d}, runtime {:.2f}s'.format(trace_index, step2_time)
+        else:
+            logmessage = 'unsuccessful for {:d}, runtime {:.2f}s'.format(trace_index, step2_time)            
+        logger.info('Step refinement ' + logmessage)
+    return
+    
+    
+
+
+
 def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, length_laststep=20,
                        maxmult=5, lamb=0.1, gamma0=0.5, multstep_fraction=0.5,
-                       nonegatives=False, mult_threshold=1, maxadded=5, splitcomb=30000, combcutoff=1000000):
+                       nonegatives=False, mult_threshold=1, maxadded=5, splitcomb=30000,
+                       combcutoff=1000000, num_cores=2):
     '''
     Run the step refinement on the output files from the preliminary step detection
     '''
@@ -123,15 +164,6 @@ def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, lengt
     # flip traces
     Traces = np.fliplr(Traces)
     
-    # Prepare output dataframe
-    outputs = ['trace', 'kv_mean', 'kv_variance', 'fluors_intensity',
-               'fluors_kv', 'fluors_avgintensity', 'fluors_full']
-    result_out = basedf.iloc[np.repeat(np.arange(N_traces), len(outputs))]
-    result_out = result_out.reset_index(drop=True)
-    result_out['step2_time [s]'] = 0
-    result_out['sic_final'] = 0
-    result_out['type'] = outputs*N_traces
-
     # read in kvjson
     fp = open(kvjson)
     kvjsondata = json.load(fp)
@@ -139,92 +171,63 @@ def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, lengt
     # generate flages
     flags, avg_laststep = generate_flags(kvjsondata, parameters['KV_threshold'],
                                          subtracted, percentile_step, length_laststep)
-    result_out['flag'] = np.repeat(flags, 7)
-    # result array
-    result_array = np.zeros([N_traces*len(outputs), N_frames])
-    # kvresult into result array
-    for i in range(5):
-        indices = np.arange(i, N_traces*len(outputs), len(outputs))
-        result_array[indices, :] = np.fliplr(kvresult.loc[kvresult['type'] == outputs[i], '0':])
-    # fluorophores by average intensity
-    fluors_avgintensity = np.round(Traces/avg_laststep).astype(int)
-    result_array[np.arange(5, N_traces*len(outputs), len(outputs)), :] = fluors_avgintensity
-    
+
     # import json
     if os.path.isfile(jsonfile):
-        starttrace = step2_from_json(jsonfile, parameters, result_out, result_array)
+        trace_indices = step2_from_json(jsonfile, parameters, N_traces)
     else:
-        starttrace = 0
+        trace_indices = np.arange(N_traces)
         
-    tracetime = []        
-    # Main Loop over traces
-    for K in range(starttrace, N_traces):
-        # inputs from kvjson
-        steppos_kv = np.array(kvjsondata['steppos'][K])
-        means = np.array(kvjsondata['means'][K])
-        variances = np.array(kvjsondata['variances'][K])
-        posbysic = np.array(kvjsondata['posbysic'][K])
-        if flags[K] == 0:
-            tic = time.time()
-            # call to improve steps
-            success, sicmin, steppos_out, steps_out = improve_steps_single(Traces[K, :], steppos_kv,
-                                                                           means, variances, posbysic,
-                                                                           maxmult, lamb, gamma0, multstep_fraction,
-                                                                           nonegatives, mult_threshold, maxadded,
-                                                                           splitcomb, combcutoff)
-            tracetime.append(time.time()-tic)
-            if success:
-                result_out.loc[7*K:7*(K + 1), 'flag'] = 1
-                # update json
-                step2_to_json(jsonfile, parameters, steppos_out, steps_out,
-                              tracetime[-1], sicmin, 1)
-                # log
-                logmessage = '{:d} analysed succesfully, runtime {:.2f}s'.format(K, tracetime[-1])
-                logger.info('Trace ' + logmessage)
-            else:
-                result_out.loc[7*K:7*(K + 1), 'flag'] = -7
-                step2_to_json(jsonfile, parameters, steppos_out, steps_out,
-                              tracetime[-1], sicmin, -7)
-                # log
-                logmessage = '{:d} not analysed succesfully, runtime {:.2f}s'.format(K, tracetime[-1])
-                logger.info('Trace ' + logmessage)
-            result_out.loc[7*K:7*(K + 1), 'step2_time'] = tracetime[-1]
-            result_out.loc[7*K:7*(K + 1), 'sic_final'] = sicmin
-            # diffs (frames between steps)
-            diffs = np.diff(np.hstack([0, steppos_out, N_frames]))
-            # fluors from steps
-            fluors = np.cumsum(np.hstack([0, steps_out]))
-            # write result into array
-            result_array[7*K + 6, :] = np.repeat(fluors, diffs)
-        elif flags[K] == 1:
-            # only one step in trace
-            result_out.loc[7*K:7*(K + 1), 'flag'] = 1
-            # steps
-            steps_out = np.array([1])
-            # update json
-            step2_to_json(jsonfile, parameters, steppos_kv, steps_out, 0, 0, 1)
-            # diffs (frames between steps)
-            diffs = np.diff(np.hstack([0, steppos_kv, N_frames]))
-            # fluors from steps
-            fluors = np.cumsum(np.hstack([0, steps_out]))
-            # write result into array
-            result_array[7*K + 6, :] = np.repeat(fluors, diffs)
-            logmessage = '{:d} skipped, only one step'.format(K)
-            logger.info('Trace ' + logmessage)
-        else:
-            # trace flagged out, only update json
-            step2_to_json(jsonfile, parameters, np.array([]), np.array([]), 0, 0, flags[K])
-            result_out.loc[7*K:7*(K + 1), 'flag'] = flags[K]
-            # log
-            logmessage = '{:d} flagged out: flag {:d}'.format(K, flags[K])
-            logger.info('Trace ' + logmessage)
+    # remove flagged out traces
+    flags_sel = flags[trace_indices]
+    trace_indices = np.delete(trace_indices, np.where(flags_sel != 0)[0])
     
-    #flip result back
-    result_array = np.fliplr(result_array)
+    # need at least 2 cores for listener and worker
+    if num_cores < 2:
+        num_cores = 2
+    
+    # Set up pool of workers
+    manager = mp.Manager()
+    Q = manager.Queue()    
+    pool = mp.Pool(num_cores)
+    
+    # start listener
+    pool.apply_async(listener,
+                      (Q, jsonfile, parameters, logger))
+    
+    jobs = []           
+    # Main Loop over traces
+    for K in trace_indices:
+        # inputs from kvjson
+        kvindex = int(np.where(kvjsondata['trace_index']==K)[0])
+        steppos_kv = np.array(kvjsondata['steppos'][kvindex])
+        means = np.array(kvjsondata['means'][kvindex])
+        variances = np.array(kvjsondata['variances'][kvindex])
+        posbysic = np.array(kvjsondata['posbysic'][kvindex])
+        # trace
+        trace = Traces[K, :]
+        # refinement args
+        refinement_args = (steppos_kv, means, variances, posbysic, maxmult, lamb, gamma0,
+                           multstep_fraction, nonegatives, mult_threshold, maxadded,
+                           splitcomb, combcutoff)
+        job = pool.apply_async(worker,
+                               (K, trace, refinement_args, Q))
+        jobs.append(job)
+        
+    # collect results from the workers through the pool result queue
+    for job in jobs:
+        job.get()
+
+    #now we are done, kill the listener
+    Q.put('kill')
+    pool.close()
+    pool.join()
+        
     # write result
+    result_out, result_array = step2result_from_json(jsonfile, kvout, flags, avg_laststep)
     result_out = export_csv(result_out, result_array, outfile, parameters, comment)
     # log
-    logmessage = '{:d} Traces, avg runtime {:.2f}s'.format(N_traces, np.mean(tracetime))
+    logmessage = '{:d} Traces '.format(N_traces)
     logger.info('Finished step 2 for ' + logmessage)
     
     return result_out

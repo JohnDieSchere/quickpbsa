@@ -17,7 +17,7 @@ from .kv_lowlevel import kv_single_fast
 from .kv_lowlevel import kv_single
 from .helpers import read_tracedf
 from .helpers import crop_traces
-from .helpers import kv_from_json, kv_to_json, result_from_json
+from .helpers import kv_from_json, kv_to_json, kvresult_from_json
 from ..helpers import export_csv
 
 
@@ -147,7 +147,7 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
     pool.join()
         
     # write result
-    result_out, result_array = result_from_json(jsonfile, Traces, basedf)
+    result_out, result_array = kvresult_from_json(jsonfile, Traces, basedf)
     result_out = export_csv(result_out, result_array, outfile, parameters, comment)
     # log
     logmessage = '{:d} Traces'.format(len(trace_indices))

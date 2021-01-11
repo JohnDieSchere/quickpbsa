@@ -28,9 +28,23 @@ def read_kvresult(filename):
     return kvresult, Traces, basedf, comment, parameters, N_traces, N_frames
 
 
-def step2_to_json(jsonfile, parameters, steppos, steps, step2_time, sic_final, flag):
+def step2_from_json(jsonfile, parameters, N_traces):
+    fp = open(jsonfile)
+    jsondata = json.load(fp)
+    fp.close()
+    # traces yet to be analysed
+    trace_indices = np.arange(N_traces)
+    if jsondata['parameters'] == list(parameters.values()):
+        analysed_traces = jsondata['trace_index']
+        # delete trace indices already in json file
+        trace_indices = np.delete(trace_indices, analysed_traces)
+    return trace_indices
+
+
+def step2_to_json(jsonfile, parameters, trace_index, steppos, steps, step2_time, sic_final, flag):
     # convert to list to make arrays serializable
-    jsondata_out = {'steppos': [steppos.tolist()],
+    jsondata_out = {'trace_index': [int(trace_index)],
+                    'steppos': [steppos.tolist()],
                     'steps': [steps.tolist()],
                     'step2_time': [step2_time],
                     'sic_final': [sic_final],
@@ -43,6 +57,7 @@ def step2_to_json(jsonfile, parameters, steppos, steps, step2_time, sic_final, f
         if jsondata_file['parameters'] == list(parameters.values()):
             jsondata_out = jsondata_file
             # convert to list to make arrays serializable
+            jsondata_out['trace_index'].append(int(trace_index))
             jsondata_out['steppos'].append(steppos.tolist())
             jsondata_out['steps'].append(steps.tolist())
             jsondata_out['step2_time'].append(step2_time)
@@ -54,27 +69,54 @@ def step2_to_json(jsonfile, parameters, steppos, steps, step2_time, sic_final, f
     return
 
 
-def step2_from_json(jsonfile, parameters, resultdf, result_array):
+def step2result_from_json(jsonfile, kvout, flags, avg_laststep):
+    # Read in Traces
+    kvresult, Traces, basedf, comment, parameters, N_traces, N_frames = read_kvresult(kvout)
+    types_kv = int(np.size(kvresult, 0)/N_traces)
+    # Prepare output dataframe
+    outputs = ['trace', 'kv_mean', 'kv_variance', 'fluors_intensity',
+               'fluors_kv', 'fluors_avgintensity', 'fluors_full']
+    No = len(outputs)
+    result_out = basedf.iloc[np.repeat(np.arange(N_traces), No)]
+    result_out = result_out.reset_index(drop=True)
+    result_out['step2_time [s]'] = 0
+    result_out['sic_final'] = 0
+    result_out['type'] = outputs*N_traces
+    result_out['flag'] = np.repeat(flags, No)
+    # result array
+    result_array = np.zeros([N_traces*No, N_frames])
+    # kvresult into result array
+    for i in range(types_kv):
+        indices = np.arange(i, N_traces*No, No)
+        result_array[indices, :] = np.fliplr(kvresult.loc[kvresult['type'] == outputs[i], '0':])
+    # fluorophores by average intensity
+    fluors_avgintensity = np.round(Traces/avg_laststep).astype(int)
+    indices = np.arange(types_kv, N_traces*No, No)
+    result_array[indices, :] = fluors_avgintensity
+    # valid traces with only one fluorophore
+    indices = (np.where(flags==1)[0] + No - 1) * No
+    result_array[indices, :] = result_array[indices-No+types_kv, :]
+    # read in json
     fp = open(jsonfile)
     jsondata = json.load(fp)
     fp.close()
-    if jsondata['parameters'] == list(parameters.values()):
-        starttrace = len(jsondata['flag'])
-        for K in range(starttrace):
-            if jsondata['flag'][K] == 1 or jsondata['flag'][K] == -7:
-                # differences, i.e. frames between steps
-                diffs = np.diff([0] + jsondata['steppos'][K] + [np.size(result_array, 1)])
-                # fluors from steps
-                fluors = np.cumsum([0] + jsondata['steps'][K])
-                # write results into array
-                result_array[7*K + 6, :] = np.repeat(fluors, diffs)
-                # write metadata into results dataframe
-                resultdf.loc[7*K:7*(K + 1), 'step2_time [s]'] = jsondata['step2_time'][K]
-                resultdf.loc[7*K:7*(K + 1), 'sic_final'] = jsondata['sic_final'][K]
-                resultdf.loc[7*K:7*(K + 1), 'flag'] = jsondata['flag'][K]
-            else:
-                # Trace flagged out
-                resultdf.loc[7*K:7*(K + 1), 'flag'] = jsondata['flag'][K]                
-    else:
-        starttrace = 0
-    return starttrace
+    # write to result
+    num_entries = len(jsondata['trace_index'])
+    for I in range(num_entries):
+        K = jsondata['trace_index'][I]
+        result_out.loc[No*K:No*(K + 1), 'step2_time'] = jsondata['step2_time'][I]
+        result_out.loc[No*K:No*(K + 1), 'sic_final'] = jsondata['sic_final'][I]
+        result_out.loc[No*K:No*(K + 1), 'flag'] = jsondata['flag'][I]
+        steppos = jsondata['steppos'][I]
+        steps = jsondata['steps'][I]
+        # diffs (frames between steps)
+        diffs = np.diff(np.hstack([0, steppos, N_frames]))
+        # fluors from steps
+        fluors = np.cumsum(np.hstack([0, steps]))
+        # write result into array
+        result_array[No*K + No -1, :] = np.repeat(fluors, diffs)
+        
+    result_array = np.fliplr(result_array)
+    
+    return result_out, result_array
+        
