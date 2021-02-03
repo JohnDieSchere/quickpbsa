@@ -13,7 +13,7 @@ def readme():
         return f.read()
 
 setuptools.setup(name='quickpbsa',
-                 version='2020.0.1',
+                 version='2021.0.1',
                  description='Fast and Complete Photobleaching Step Analysis',
                  long_description=readme(),
                  long_description_content_type='text/markdown',

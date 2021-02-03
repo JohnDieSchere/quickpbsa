@@ -83,6 +83,9 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
     # calculate average last step
     avg_laststep = np.mean(laststep[(flags[flagsel1] == 0) | (flags[flagsel1] == 1)])
     
+    # reorder according to trace index
+    flags = flags[kvjson['trace_index']]
+    
     return flags, avg_laststep
 
 
@@ -90,6 +93,7 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
 def worker(trace_index, trace, refinement_args, Q):
     tic = time.time()
     result = [trace_index]
+    print(trace_index)
     res = improve_steps_single(trace, *refinement_args)
     result.append(res)
     if res[0]:

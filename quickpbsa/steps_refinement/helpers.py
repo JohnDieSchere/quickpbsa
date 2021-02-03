@@ -25,6 +25,7 @@ def read_kvresult(filename):
     # separate base dataframe
     basedf = kvresult.loc[kvresult['type']=='trace', :'0']
     basedf = basedf.drop(['0', 'type'], axis=1)
+    basedf = basedf.reset_index(drop=True)
     return kvresult, Traces, basedf, comment, parameters, N_traces, N_frames
 
 
