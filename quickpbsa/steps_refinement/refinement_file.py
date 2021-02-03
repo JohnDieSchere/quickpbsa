@@ -84,7 +84,8 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
     avg_laststep = np.mean(laststep[(flags[flagsel1] == 0) | (flags[flagsel1] == 1)])
     
     # reorder according to trace index
-    flags = flags[kvjson['trace_index']]
+    index = np.argsort(kvjson['trace_index'])
+    flags = flags[index]
     
     return flags, avg_laststep
 
