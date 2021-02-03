@@ -161,7 +161,6 @@ def add_step(data, jpos, means, variances, steps, lamb = 0.1, gamma0 = 0.5):
     # build arrays for squared diff,  variance and length
     i_in = np.cumsum(np.hstack((0, steps)))
     steploc = np.hstack((0, jpos, sz))
-    print(steploc)
     diffar = np.tile(np.array(list(map(sum, (np.split(data, jpos) - i_in*mf - mb)**2))), [sz - jpos[1], 1])
     diffar = np.hstack((diffar, np.zeros([sz - jpos[1], 1])))
     varphi = np.tile(np.hstack((i_in*vf + vb, 0)), [sz - jpos[1], 1])

@@ -93,7 +93,6 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
 def worker(trace_index, trace, refinement_args, Q):
     tic = time.time()
     result = [trace_index]
-    print(trace_index)
     res = improve_steps_single(trace, *refinement_args)
     result.append(res)
     if res[0]:
