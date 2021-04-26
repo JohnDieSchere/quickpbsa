@@ -76,7 +76,7 @@ def step2result_from_json(jsonfile, kvout, flags, avg_laststep):
     types_kv = int(np.size(kvresult, 0)/N_traces)
     # Prepare output dataframe
     outputs = ['trace', 'kv_mean', 'kv_variance', 'fluors_intensity',
-               'fluors_kv', 'fluors_avgintensity', 'fluors_full']
+                'fluors_kv', 'fluors_avgintensity', 'fluors_full']
     No = len(outputs)
     result_out = basedf.iloc[np.repeat(np.arange(N_traces), No)]
     result_out = result_out.reset_index(drop=True)
@@ -93,10 +93,11 @@ def step2result_from_json(jsonfile, kvout, flags, avg_laststep):
     # fluorophores by average intensity
     fluors_avgintensity = np.round(Traces/avg_laststep).astype(int)
     indices = np.arange(types_kv, N_traces*No, No)
-    result_array[indices, :] = fluors_avgintensity
+    result_array[indices, :] = np.fliplr(fluors_avgintensity)
     # valid traces with only one fluorophore
-    indices = (np.where(flags==1)[0] + No - 1) * No
-    result_array[indices, :] = result_array[indices-No+types_kv, :]
+    indices = np.where(flags==1)[0] * No + No - 1
+    indices_kv = np.where(flags==1)[0] * types_kv + types_kv - 1
+    result_array[indices, :] = np.fliplr(kvresult.loc[indices_kv, '0':])
     # read in json
     fp = open(jsonfile)
     jsondata = json.load(fp)
@@ -105,9 +106,9 @@ def step2result_from_json(jsonfile, kvout, flags, avg_laststep):
     num_entries = len(jsondata['trace_index'])
     for I in range(num_entries):
         K = jsondata['trace_index'][I]
-        result_out.loc[No*K:No*(K + 1), 'step2_time'] = jsondata['step2_time'][I]
-        result_out.loc[No*K:No*(K + 1), 'sic_final'] = jsondata['sic_final'][I]
-        result_out.loc[No*K:No*(K + 1), 'flag'] = jsondata['flag'][I]
+        result_out.loc[No*K:No*(K + 1) - 1, 'step2_time'] = jsondata['step2_time'][I]
+        result_out.loc[No*K:No*(K + 1) - 1, 'sic_final'] = jsondata['sic_final'][I]
+        result_out.loc[No*K:No*(K + 1) - 1, 'flag'] = jsondata['flag'][I]
         steppos = jsondata['steppos'][I]
         steps = jsondata['steps'][I]
         # diffs (frames between steps)
@@ -115,7 +116,7 @@ def step2result_from_json(jsonfile, kvout, flags, avg_laststep):
         # fluors from steps
         fluors = np.cumsum(np.hstack([0, steps]))
         # write result into array
-        result_array[No*K + No -1, :] = np.repeat(fluors, diffs)
+        result_array[No*K + No - 1, :] = np.repeat(fluors, diffs)
         
     result_array = np.fliplr(result_array)
     

@@ -12,6 +12,18 @@ Python Package providing a framework for photo-bleaching step analysis. The deta
 
 please cite this publication if you found this package useful.
 
+## Changelog
+
+### New in version 2021.0.1
+
+**Parallelisation** The trace analysis can now be run on multiple cores, implemented using multiprocessing. In the analysis functions this can be specified by calling:
+
+```python
+pbsa.pbsa_file(file, threshold, maxiter, num_cores=8)
+```
+
+One core is reserved for queueing and formatting outputs, so if you specify 8 cores, 7 will be used for the analysis. If the code runs on a compute cluster note that the parallisation does not support parallelisation over multiple nodes.
+
 ## Dependencies
 
 Although the package was tested with specific versions of these packages, other relatively new versions will likely work as well. If you have issues with newer versions of these packages get in touch. If you have issues with older versions please consider updating.
