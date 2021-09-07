@@ -14,25 +14,50 @@ import os
 def read_tracedf(filename):
     fid = open(filename)
     # read in comment
-    comment = fid.readline()[:-1]
-    if comment[0] == '#':
-        # if there is a comment line try to read parameters from it
+    firstline = fid.readline()[:-1]
+    if firstline[0] == '#':
+        # first line is comment
         try:
-            parameters = eval(comment[comment.find('{'):])
-            comment = comment[:comment.find('{')]
+            parameters = eval(firstline[firstline.find('{'):])
+            comment = firstline[:firstline.find('{')]
         except:
             parameters = {}
-        fid.close()
-        tracedf = pd.read_csv(filename, header=1)
+        try:
+            # try to read numbers from second line
+            idx = np.fromstring(fid.readline()[:-1], sep=',')
+            if sum(idx-np.arange(len(idx))) == 0:
+                # second line is header
+                header = 1
+            else:
+                # no header
+                header = None
+        except:
+            # second line is header
+            header = 1
     else:
-        # if there is not comment line only read in data
+        # no comment line
         comment = ''
         parameters = {}
-        tracedf = pd.read_csv(filename)
+        try:
+            # try to read numbers from first line
+            idx = np.fromstring(firstline, sep=',')
+            if sum(idx-np.arange(len(idx))) == 0:
+                # first line is header
+                header = 0
+            else:
+                # no header
+                header = None
+        except:
+            # first line is header
+            header = 0
+    fid.close()
+    tracedf = pd.read_csv(filename, header=header)
+    basedf = tracedf.loc[:,:'0']
+    basedf = basedf.iloc[:,:-1]
     Traces = np.array(tracedf.loc[:, '0':])
     N_traces, N_frames = np.shape(Traces)
-    basedf = tracedf.loc[:, :'0']
-    basedf = basedf.drop('0', axis=1)
+    if basedf.shape[1] == 0:
+        basedf['id'] = np.arange(N_traces)
     return Traces, basedf, comment, parameters, N_traces, N_frames
 
 

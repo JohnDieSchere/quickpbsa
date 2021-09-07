@@ -59,7 +59,7 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
     else:
         lower = np.percentile(laststep, percentile_step[0])
         upper = np.percentile(laststep, percentile_step[1])
-    sel = np.invert((laststep > lower) & (laststep < upper))
+    sel = np.invert((laststep >= lower) & (laststep <= upper))
     # to not override old flags
     ind_new = np.intersect1d(flagsel1[sel], np.where(flags >= 0)[0])
     flags[ind_new] =  -3    
