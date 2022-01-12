@@ -16,6 +16,7 @@ def read_tracedf(filename):
     # read in comment
     firstline = fid.readline()[:-1]
     if firstline[0] == '#':
+        skiprows = 1
         # first line is comment
         try:
             parameters = eval(firstline[firstline.find('{'):])
@@ -29,6 +30,9 @@ def read_tracedf(filename):
             if sum(idx-np.arange(len(idx))) == 0:
                 # second line is header
                 header = 1
+            elif sum(idx-np.arange(1, len(idx)+1)) == 0:
+                # first line is header
+                header = 0
             else:
                 # no header
                 header = None
@@ -36,6 +40,7 @@ def read_tracedf(filename):
             # second line is header
             header = 1
     else:
+        skiprows = 0
         # no comment line
         comment = ''
         parameters = {}
@@ -45,6 +50,9 @@ def read_tracedf(filename):
             if sum(idx-np.arange(len(idx))) == 0:
                 # first line is header
                 header = 0
+            elif sum(idx-np.arange(1, len(idx)+1)) == 0:
+                # first line is header
+                header = 0
             else:
                 # no header
                 header = None
@@ -52,7 +60,7 @@ def read_tracedf(filename):
             # first line is header
             header = 0
     fid.close()
-    tracedf = pd.read_csv(filename, header=header)
+    tracedf = pd.read_csv(filename, header=header, skiprows=skiprows)
     basedf = tracedf.loc[:,:'0']
     basedf = basedf.iloc[:,:-1]
     Traces = np.array(tracedf.loc[:, '0':])

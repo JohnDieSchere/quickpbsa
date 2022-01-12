@@ -90,8 +90,29 @@ def generate_flags(kvjson, KVthreshold, subtracted=True, percentile_step=90, len
     return flags, avg_laststep
 
 
+def worker_singlecore(trace_index, trace, refinement_args,
+                      jsonfile, parameters, logger):
+    # worker part
+    tic = time.time()
+    success, sic_final, steppos, steps = improve_steps_single(trace, *refinement_args)
+    if success:
+        flag = 1
+    else:
+        flag = -7
+    step2_time = time.time() - tic
+    # write to json file
+    step2_to_json(jsonfile, parameters, trace_index, steppos, steps, step2_time, sic_final, flag)
+    # write to log
+    if flag == 1:
+        logmessage = 'successful for {:d}, runtime {:.2f}s'.format(trace_index, step2_time)
+    else:
+        logmessage = 'unsuccessful for {:d}, runtime {:.2f}s'.format(trace_index, step2_time)            
+    logger.info('Step refinement ' + logmessage)
+    return
+    
 
-def worker(trace_index, trace, refinement_args, Q):
+
+def worker_parallel(trace_index, trace, refinement_args, Q):
     tic = time.time()
     result = [trace_index]
     res = improve_steps_single(trace, *refinement_args)
@@ -132,7 +153,7 @@ def listener(Q, jsonfile, parameters, logger):
 def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, length_laststep=20,
                        maxmult=5, lamb=0.1, gamma0=0.5, multstep_fraction=0.5,
                        nonegatives=False, mult_threshold=1, maxadded=5, splitcomb=30000,
-                       combcutoff=1000000, num_cores=2):
+                       combcutoff=1000000, num_cores=1):
     '''
     Run the step refinement on the output files from the preliminary step detection
     '''
@@ -186,46 +207,63 @@ def improve_steps_file(kvout, kvjson, subtracted=True, percentile_step=90, lengt
     flags_sel = flags[trace_indices]
     trace_indices = np.delete(trace_indices, np.where(flags_sel != 0)[0])
     
-    # need at least 2 cores for listener and worker
-    if num_cores < 2:
-        num_cores = 2
-    
-    # Set up pool of workers
-    manager = mp.Manager()
-    Q = manager.Queue()    
-    pool = mp.Pool(num_cores)
-    
-    # start listener
-    pool.apply_async(listener,
-                      (Q, jsonfile, parameters, logger))
-    
-    jobs = []           
-    # Main Loop over traces
-    for K in trace_indices:
-        # inputs from kvjson
-        kvindex = int(np.where(kvjsondata['trace_index']==K)[0])
-        steppos_kv = np.array(kvjsondata['steppos'][kvindex])
-        means = np.array(kvjsondata['means'][kvindex])
-        variances = np.array(kvjsondata['variances'][kvindex])
-        posbysic = np.array(kvjsondata['posbysic'][kvindex])
-        # trace
-        trace = Traces[K, :]
-        # refinement args
-        refinement_args = (steppos_kv, means, variances, posbysic, maxmult, lamb, gamma0,
-                           multstep_fraction, nonegatives, mult_threshold, maxadded,
-                           splitcomb, combcutoff)
-        job = pool.apply_async(worker,
-                               (K, trace, refinement_args, Q))
-        jobs.append(job)
+    # single core execution
+    if num_cores == 1:
         
-    # collect results from the workers through the pool result queue
-    for job in jobs:
-        job.get()
-
-    #now we are done, kill the listener
-    Q.put('kill')
-    pool.close()
-    pool.join()
+        for K in trace_indices:
+            # inputs from kvjson
+            kvindex = int(np.where(kvjsondata['trace_index']==K)[0])
+            steppos_kv = np.array(kvjsondata['steppos'][kvindex])
+            means = np.array(kvjsondata['means'][kvindex])
+            variances = np.array(kvjsondata['variances'][kvindex])
+            posbysic = np.array(kvjsondata['posbysic'][kvindex])
+            # trace
+            trace = Traces[K, :]
+            # arguments for refinement
+            refinement_args = (steppos_kv, means, variances, posbysic, maxmult, lamb, gamma0,
+                               multstep_fraction, nonegatives, mult_threshold, maxadded,
+                               splitcomb, combcutoff)
+            worker_singlecore(K, trace, refinement_args, jsonfile, parameters, logger)
+    
+    # parallel execution    
+    else:
+    
+        # Set up pool of workers
+        manager = mp.Manager()
+        Q = manager.Queue()    
+        pool = mp.Pool(num_cores)
+        
+        # start listener
+        pool.apply_async(listener,
+                          (Q, jsonfile, parameters, logger))
+        
+        jobs = []           
+        # Main Loop over traces
+        for K in trace_indices:
+            # inputs from kvjson
+            kvindex = int(np.where(kvjsondata['trace_index']==K)[0])
+            steppos_kv = np.array(kvjsondata['steppos'][kvindex])
+            means = np.array(kvjsondata['means'][kvindex])
+            variances = np.array(kvjsondata['variances'][kvindex])
+            posbysic = np.array(kvjsondata['posbysic'][kvindex])
+            # trace
+            trace = Traces[K, :]
+            # refinement args
+            refinement_args = (steppos_kv, means, variances, posbysic, maxmult, lamb, gamma0,
+                               multstep_fraction, nonegatives, mult_threshold, maxadded,
+                               splitcomb, combcutoff)
+            job = pool.apply_async(worker_parallel,
+                                   (K, trace, refinement_args, Q))
+            jobs.append(job)
+            
+        # collect results from the workers through the pool result queue
+        for job in jobs:
+            job.get()
+    
+        #now we are done, kill the listener
+        Q.put('kill')
+        pool.close()
+        pool.join()
         
     # write result
     result_out, result_array = step2result_from_json(jsonfile, kvout, flags, avg_laststep)

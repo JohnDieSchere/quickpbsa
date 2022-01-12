@@ -21,7 +21,40 @@ from .helpers import kv_from_json, kv_to_json, kvresult_from_json
 from ..helpers import export_csv
 
 
-def worker(trace_index, trace, threshold, maxiter, max_memory, Q):
+def worker_singlecore(trace_index, trace, threshold, maxiter, max_memory,
+                      crop_index, jsonfile, parameters, logger):
+    # worker part
+    tic = time.time()
+    if len(trace)**2*4/1e9 < max_memory:
+        # faster but memory consuming for long traces ( > 10000)
+        steppos, means, variances, posbysic, kv_iter = kv_single_fast(trace, threshold, maxiter)
+    else:
+        # slower but less memory consuming
+        steppos, means, variances, posbysic, kv_iter = kv_single(trace, threshold, maxiter)
+    kv_time = time.time()-tic
+    # listener part
+    steppos = steppos + crop_index[trace_index]
+    posbysic = posbysic + crop_index[trace_index]
+    if len(steppos) > 0:
+        # calculate fluors by intensity
+        means_sub = means - means[0]
+        fluors_intensity = np.round(means_sub/means_sub[1]).astype(int)
+        # calculate fluors by steps
+        stepsigns = np.sign(np.diff(means)) #sign of steps
+        fluors_kv = np.cumsum(np.hstack((0, stepsigns)))
+    else:
+        # fluors (zero)
+        fluors_intensity = np.array([0])
+        fluors_kv = np.array([0])
+        kv_to_json(jsonfile, parameters, trace_index, steppos, means, variances, posbysic,
+                    fluors_intensity, fluors_kv, 0, kv_time, kv_iter)
+        # write to log
+        logmessage = 'trace {:d}, {:d} iterations, runtime {:.2f}s'.format(trace_index, kv_iter, kv_time)
+        logger.info('Finished KV ' + logmessage)   
+    return
+
+
+def worker_parallel(trace_index, trace, threshold, maxiter, max_memory, Q):
     tic = time.time()
     result = [trace_index]
     if len(trace)**2*4/1e9 < max_memory:
@@ -69,7 +102,7 @@ def listener(Q, crop_index, jsonfile, parameters, logger):
     
 
 
-def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, crop=False, bgframes = 500, num_cores=2):
+def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, crop=False, bgframes=500, num_cores=1):
     '''
     Run preliminary step detection on a .csv file with rows as photobleaching traces
     '''
@@ -107,7 +140,6 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
     
     # crop traces if specified (does not actually cut the data, only ignores part of it for analysis purposes)
     crop_index = crop_traces(Traces, threshold/2, bgframes, crop)
-    print(crop_index)
     
     # import json
     if os.path.isfile(jsonfile):
@@ -115,36 +147,41 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
     else:
         trace_indices = np.arange(N_traces)
     
-    # need at least 2 cores for listener and worker
-    if num_cores < 2:
-        num_cores = 2
+    # single core execution
+    if num_cores == 1:
+        for K in trace_indices:
+            trace = Traces[K, crop_index[K]:]
+            worker_singlecore(K, trace, threshold, maxiter, max_memory,
+                              crop_index, jsonfile, parameters, logger)
     
-    # Set up pool of workers
-    manager = mp.Manager()
-    Q = manager.Queue()    
-    pool = mp.Pool(num_cores)
-    
-    # start listener
-    pool.apply_async(listener,
-                     (Q, crop_index, jsonfile, parameters, logger))
-    
-    jobs = []      
-    # Start workers on traces
-    for K in trace_indices:
-        # cropped trace
-        trace = Traces[K, crop_index[K]:]
-        job = pool.apply_async(worker,
-                               (K, trace, threshold, maxiter, max_memory, Q))
-        jobs.append(job)
+    #parallel execution
+    else:        
+        # Set up pool of workers
+        manager = mp.Manager()
+        Q = manager.Queue()    
+        pool = mp.Pool(num_cores)
         
-    # collect results from the workers through the pool result queue
-    for job in jobs:
-        job.get()
-
-    #now we are done, kill the listener
-    Q.put('kill')
-    pool.close()
-    pool.join()
+        # start listener
+        pool.apply_async(listener,
+                         (Q, crop_index, jsonfile, parameters, logger))
+        
+        jobs = []      
+        # Start workers on traces
+        for K in trace_indices:
+            # cropped trace
+            trace = Traces[K, crop_index[K]:]
+            job = pool.apply_async(worker_parallel,
+                                   (K, trace, threshold, maxiter, max_memory, Q))
+            jobs.append(job)
+            
+        # collect results from the workers through the pool result queue
+        for job in jobs:
+            job.get()
+    
+        #now we are done, kill the listener
+        Q.put('kill')
+        pool.close()
+        pool.join()
         
     # write result
     result_out, result_array = kvresult_from_json(jsonfile, Traces, basedf)
