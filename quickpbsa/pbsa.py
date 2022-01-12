@@ -94,7 +94,7 @@ def pbsa_file(infile, threshold, maxiter, outfolder=None, num_cores=2,
     # default Kalafut Vischer Parameters
     kv_param = {'norm': 1,
                 'max_memory': 4.0,
-                'crop': True,
+                'crop': False,
                 'bg_frames': 500}
     kv_param.update(preliminary_optional)
     filter_param = {'subtracted': True,

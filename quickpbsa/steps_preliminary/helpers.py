@@ -21,6 +21,7 @@ def read_tracedf(filename):
             parameters = eval(firstline[firstline.find('{'):])
             comment = firstline[:firstline.find('{')]
         except:
+            comment = ''
             parameters = {}
         try:
             # try to read numbers from second line
@@ -61,17 +62,24 @@ def read_tracedf(filename):
     return Traces, basedf, comment, parameters, N_traces, N_frames
 
 
-def crop_traces(Traces, threshold, bgframes):
-    # check where differences go over threshold
-    indar = (np.diff(Traces) > threshold) * np.arange(np.size(Traces, 1) - 1)
+def crop_traces(Traces, threshold, bgframes, crop):
+    # clip of nans
+    indar = (np.invert(np.isnan(Traces)) * np.arange(np.size(Traces, 1)))
     indar[indar == 0] = np.size(Traces, 1)
-    # index where to crop
-    crop_index = np.min(indar, 1)
-    crop_index[crop_index == np.size(Traces, 1)] = 0
-    # go back bg frames
-    crop_index = crop_index - bgframes
-    crop_index[crop_index < 0] = 0
-    return crop_index
+    crop_index_nan = np.min(indar, 1)
+    crop_index_nan[crop_index_nan == np.size(Traces, 1)] = 0
+    if crop:
+        # check where differences go over threshold
+        indar = (np.diff(Traces) > threshold) * np.arange(np.size(Traces, 1) - 1)
+        indar[indar == 0] = np.size(Traces, 1)
+        # index where to crop
+        crop_index = np.min(indar, 1)
+        crop_index[crop_index == np.size(Traces, 1)] = 0
+        # go back bg frames
+        crop_index = crop_index - bgframes
+        crop_index[crop_index < 0] = 0
+        crop_index_nan = np.maximum(crop_index, crop_index_nan)
+    return crop_index_nan
 
 
 def kv_to_json(jsonfile, parameters, trace_index, steppos, means, variances, posbysic,

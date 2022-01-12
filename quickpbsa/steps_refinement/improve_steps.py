@@ -31,16 +31,16 @@ def improve_steps_single(data, jpos, means, variances, posbysic, maxmult = 5, la
         if np.sum(ind_keep) < nsteps:
             jpos = jpos[ind_keep]
             nsteps = len(jpos)
-            means = np.array([np.mean(ar) for ar in np.split(data, jpos)])
-            variances = np.array([np.var(ar) for ar in np.split(data, jpos)])
+            means = np.array([np.nanmean(ar) for ar in np.split(data, jpos)])
+            variances = np.array([np.nanvar(ar) for ar in np.split(data, jpos)])
             success, sic, step = find_multstep(data, jpos, means, variances, maxmult, lamb, gamma0, multstep_fraction,\
                                                nonegatives, threshold, splitcomb, combcutoff)
             if sic < sicmin:
                 sicmin = sic
                 step_out = step
                 jpos_out = jpos
-    means = np.array([np.mean(ar) for ar in np.split(data, jpos_out)])
-    variances = np.array([np.var(ar) for ar in np.split(data, jpos_out)])
+    means = np.array([np.nanmean(ar) for ar in np.split(data, jpos_out)])
+    variances = np.array([np.nanvar(ar) for ar in np.split(data, jpos_out)])
     nsteps = len(jpos_out)
     if nsteps==nsteps_in:
         counter=0

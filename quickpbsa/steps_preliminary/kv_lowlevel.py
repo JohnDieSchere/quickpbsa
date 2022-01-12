@@ -16,7 +16,7 @@ def sic_single(data, steps):
     '''
     N = len(data)
     splar = np.split(data, steps)
-    SIC = (len(steps) + 2) * math.log(N) + N * math.log(math.fsum([np.var(ar) * len(ar)/N for ar in splar]))
+    SIC = (len(steps) + 2) * math.log(N) + N * math.log(math.fsum([np.nanvar(ar) * len(ar)/N for ar in splar]))
     return SIC
 
 
@@ -37,8 +37,8 @@ def kv_single_fast(data, threshold, maxiter):
     for k in range(maxiter):
         
         # build variance array for SIC calculation
-        variancesances = np.hstack(([np.var(ar) for ar in np.split(data, jpos)], 0))
-        varar = np.tile(variancesances, [sz, 1])
+        variances = np.hstack(([np.nanvar(ar) for ar in np.split(data, jpos)], 0))
+        varar = np.tile(variances, [sz, 1])
         # build length array for SIC calculation
         steploc = np.hstack((0, jpos, sz))
         lar = np.tile(np.hstack((np.diff(steploc), 0)), [sz, 1])
@@ -66,16 +66,16 @@ def kv_single_fast(data, threshold, maxiter):
         # ignore steps not in indices
         sic = sic[indices]
         
-        if np.min(sic) < sicmin:
+        if np.nanmin(sic) < sicmin:
             # step found
-            stp = indices[np.argmin(sic)] + 1
+            stp = indices[np.nanargmin(sic)] + 1
             jtest = sorted(np.hstack((jpos, stp)))
-            means = [np.mean(ar) for ar in np.split(data, jtest)]
+            means = [np.nanmean(ar) for ar in np.split(data, jtest)]
             stpind = np.where(jtest == stp)[0]
             if np.abs(np.diff(means))[stpind] > threshold:
                 # step above threshold  =>  add
                 jpos = np.array(jtest).astype(int)
-                sicmin = np.min(sic)
+                sicmin = np.nanmin(sic)
                 posbysic.append(stp)
                 counter = 0
             else:
@@ -84,15 +84,15 @@ def kv_single_fast(data, threshold, maxiter):
                 if counter > maxiter/5:
                     break
             # ignore area around step
-            jignore = np.argmin(sic) + np.arange( - 2, 3)
+            jignore = np.nanargmin(sic) + np.arange( - 2, 3)
             jignore = jignore[(jignore > 0)*(jignore < len(indices) - 1)]
             indices = np.delete(indices, jignore)
         else:
             break
     
     # calculate final variances and means
-    variances = np.array([np.var(ar) for ar in np.split(data, jpos)])
-    means = np.array([np.mean(ar) for ar in np.split(data, jpos)])
+    variances = np.array([np.nanvar(ar) for ar in np.split(data, jpos)])
+    means = np.array([np.nanmean(ar) for ar in np.split(data, jpos)])
     posbysic = np.array(posbysic)
     
     return jpos, means, variances, posbysic, k
@@ -118,7 +118,7 @@ def kv_single(data, threshold, maxiter):
         if np.min(SIC) < sicmin:
             #Step improves SIC
             jtest = sorted(np.hstack((jpos, ind[np.argmin(SIC)])))
-            means = [np.mean(ar) for ar in np.split(data, jtest)]
+            means = [np.nanmean(ar) for ar in np.split(data, jtest)]
             if np.sum(np.abs(np.diff(means)) < threshold):
                 # Step ads a mean step below threshold  =>  ignore
                 jignore = np.hstack((jignore, ind[np.argmin(SIC)] - np.arange(5)))
@@ -136,8 +136,8 @@ def kv_single(data, threshold, maxiter):
         else:
             break
         
-    means = np.array([np.mean(ar) for ar in np.split(data, jpos)])
-    variances = np.array([np.var(ar) for ar in np.split(data, jpos)])
+    means = np.array([np.nanmean(ar) for ar in np.split(data, jpos)])
+    variances = np.array([np.nanvar(ar) for ar in np.split(data, jpos)])
     posbysic = np.array(posbysic)
     
     return jpos, means, variances, posbysic, I 

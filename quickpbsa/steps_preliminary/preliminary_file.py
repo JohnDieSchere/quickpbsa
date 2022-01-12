@@ -69,7 +69,7 @@ def listener(Q, crop_index, jsonfile, parameters, logger):
     
 
 
-def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, crop=True, bgframes = 500, num_cores=2):
+def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, crop=False, bgframes = 500, num_cores=2):
     '''
     Run preliminary step detection on a .csv file with rows as photobleaching traces
     '''
@@ -106,8 +106,8 @@ def kv_file(infile, threshold, maxiter, outfolder=None, norm=1, max_memory=2.0, 
     Traces = np.fliplr(Traces)/norm
     
     # crop traces if specified (does not actually cut the data, only ignores part of it for analysis purposes)
-    if crop:
-        crop_index = crop_traces(Traces, threshold/2, bgframes)
+    crop_index = crop_traces(Traces, threshold/2, bgframes, crop)
+    print(crop_index)
     
     # import json
     if os.path.isfile(jsonfile):

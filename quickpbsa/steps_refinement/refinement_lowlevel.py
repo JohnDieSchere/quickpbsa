@@ -230,7 +230,7 @@ def add_step(data, jpos, means, variances, steps, lamb = 0.1, gamma0 = 0.5):
         jpos_out = sorted(np.hstack((jpos, newstep)))
         
         # calculate variances and means
-        variances = [np.var(ar) for ar in np.split(data, jpos_out)]
-        means = [np.mean(ar) for ar in np.split(data, jpos_out)]
+        variances = [np.nanvar(ar) for ar in np.split(data, jpos_out)]
+        means = [np.nanmean(ar) for ar in np.split(data, jpos_out)]
         
     return sicmin, jpos_out, step_out, means, variances
