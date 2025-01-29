@@ -18,8 +18,9 @@ def read_kvresult(filename):
     comment = fid.readline()[:-1]
     parameters = eval(comment[comment.find('{'):])
     comment = comment[:comment.find('{')]
+    fid.close()
     # read in KVresult and separate traces
-    kvresult = pd.read_csv(filename, header=1)
+    kvresult = pd.read_csv(filename, skiprows=1)
     Traces = np.array(kvresult.loc[kvresult['type']=='trace', '0':])
     N_traces, N_frames = np.shape(Traces)
     # separate base dataframe

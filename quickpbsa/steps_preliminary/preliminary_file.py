@@ -46,11 +46,11 @@ def worker_singlecore(trace_index, trace, threshold, maxiter, max_memory,
         # fluors (zero)
         fluors_intensity = np.array([0])
         fluors_kv = np.array([0])
-        kv_to_json(jsonfile, parameters, trace_index, steppos, means, variances, posbysic,
-                    fluors_intensity, fluors_kv, 0, kv_time, kv_iter)
-        # write to log
-        logmessage = 'trace {:d}, {:d} iterations, runtime {:.2f}s'.format(trace_index, kv_iter, kv_time)
-        logger.info('Finished KV ' + logmessage)   
+    kv_to_json(jsonfile, parameters, trace_index, steppos, means, variances, posbysic,
+                fluors_intensity, fluors_kv, 0, kv_time, kv_iter)
+    # write to log
+    logmessage = 'trace {:d}, {:d} iterations, runtime {:.2f}s'.format(trace_index, kv_iter, kv_time)
+    logger.info('Finished KV ' + logmessage)   
     return
 
 

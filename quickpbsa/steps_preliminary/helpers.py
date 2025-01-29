@@ -16,53 +16,24 @@ def read_tracedf(filename):
     # read in comment
     firstline = fid.readline()[:-1]
     if firstline[0] == '#':
-        skiprows = 1
         # first line is comment
         try:
             parameters = eval(firstline[firstline.find('{'):])
             comment = firstline[:firstline.find('{')]
+            skiprows = 1
         except:
             comment = ''
             parameters = {}
-        try:
-            # try to read numbers from second line
-            idx = np.fromstring(fid.readline()[:-1], sep=',')
-            if sum(idx-np.arange(len(idx))) == 0:
-                # second line is header
-                header = 1
-            elif sum(idx-np.arange(1, len(idx)+1)) == 0:
-                # first line is header
-                header = 0
-            else:
-                # no header
-                header = None
-        except:
-            # second line is header
-            header = 1
-    else:
-        skiprows = 0
-        # no comment line
-        comment = ''
-        parameters = {}
-        try:
-            # try to read numbers from first line
-            idx = np.fromstring(firstline, sep=',')
-            if sum(idx-np.arange(len(idx))) == 0:
-                # first line is header
-                header = 0
-            elif sum(idx-np.arange(1, len(idx)+1)) == 0:
-                # first line is header
-                header = 0
-            else:
-                # no header
-                header = None
-        except:
-            # first line is header
-            header = 0
+            skiprows = 0
     fid.close()
-    tracedf = pd.read_csv(filename, header=header, skiprows=skiprows)
-    basedf = tracedf.loc[:,:'0']
-    basedf = basedf.iloc[:,:-1]
+    try:
+        tracedf = pd.read_csv(filename, header=0, skiprows=skiprows)
+        basedf = tracedf.loc[:,:'0']
+        basedf = basedf.iloc[:,:-1]
+    except:
+        tracedf = pd.read_csv(filename, header=None)
+        basedf = tracedf.loc[:,:'0']
+        basedf = basedf.iloc[:,:-1]
     Traces = np.array(tracedf.loc[:, '0':])
     N_traces, N_frames = np.shape(Traces)
     if basedf.shape[1] == 0:
@@ -151,12 +122,12 @@ def kvresult_from_json(jsonfile, Traces, basedf):
         result_out = basedf.iloc[np.repeat(np.arange(N_traces), No)]
         result_out = result_out.reset_index(drop=True)
     result_out['crop_index'] = 0
-    result_out['kv_time [s]'] = 0
+    result_out['kv_time [s]'] = 0.0
     result_out['kv_iter'] = 0
-    result_out['laststep'] = 0
-    result_out['sdev_laststep'] = 0
-    result_out['bg'] = 0
-    result_out['sdev_bg'] = 0
+    result_out['laststep'] = 0.0
+    result_out['sdev_laststep'] = 0.0
+    result_out['bg'] = 0.0
+    result_out['sdev_bg'] = 0.0
     result_out['flag'] = 0
     result_out['type'] = outputs*N_traces
     

@@ -15,7 +15,7 @@ from glob import glob
 from .steps_preliminary import kv_file
 from .steps_refinement import improve_steps_file
 
-def pbsa_file(infile, threshold, maxiter, outfolder=None, num_cores=2,
+def pbsa_file(infile, threshold, maxiter, outfolder=None, num_cores=1,
               preliminary_optional={}, filter_optional={}, refinement_optional={}):
     ''' Run the full photobleaching step analysis on a single file.
     
@@ -148,7 +148,7 @@ def pbsa_file(infile, threshold, maxiter, outfolder=None, num_cores=2,
                                     num_cores)
     return result_out
 
-def run_pbsa(folder, threshold, maxiter, file_id='_difference.csv',  outfolder=None, num_cores=2,
+def run_pbsa(folder, threshold, maxiter, file_id='_difference.csv',  outfolder=None, num_cores=1,
              preliminary_optional={}, filter_optional={}, refinement_optional={}):
     ''' Run the full photobleaching step analysis on a all files in folder
     

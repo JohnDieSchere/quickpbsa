@@ -86,9 +86,9 @@ def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_di
     #### build arrays of pixels surrounding centers ###########################
     # format to 1d
     center = pardict['pix_x'] * np.floor(y).astype(int) + np.floor(x).astype(int)
-    loc_df['center_pix'] = center    
+    loc_df['center_pix'] = center
     # create a surrounding points array (respective to center)
-    radind = np.tile(np.arange( -edge * pardict['pix_x'],
+    radind = np.tile(np.arange(-edge * pardict['pix_x'],
                                (edge + 1) * pardict['pix_x'],
                                pardict['pix_x']),
                      [2*edge + 1, 1])
@@ -96,8 +96,8 @@ def extract_traces_localization(tiffstack, locfile, r_peak, r_bg1, r_bg2, min_di
     # surrounding indices for each point
     ind = (np.tile(np.ravel(radind), [len(center), 1]).T + center).astype(int)    
     # pixel coordinates from ind
-    x_ar = ind % pardict['pix_y'] + 0.5
-    y_ar = np.floor(ind / pardict['pix_x']) + 0.5    
+    x_ar = ind % pardict['pix_x'] + 0.5
+    y_ar = np.floor(ind / pardict['pix_x']) + 0.5
     # distance to center array
     dist = (x_ar - x)**2 + (y_ar - y)**2
     

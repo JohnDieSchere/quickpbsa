@@ -15,8 +15,8 @@ def pardict_from_image(imfile):
     pardict = {}
     with tifffile.TiffFile(imfile) as tif:
         # image size
-        pardict['pix_x'] = int(tif.pages[0].tags['ImageWidth'].value)
-        pardict['pix_y'] = int(tif.pages[0].tags['ImageLength'].value)
+        pardict['pix_x'] = tif.pages[0].asarray().shape[1]
+        pardict['pix_y'] = tif.pages[0].asarray().shape[0]
         resolution_unit = int(tif.pages[0].tags['ResolutionUnit'].value)
         resolution = tif.pages[0].tags['XResolution'].value
         if resolution_unit == 3:
@@ -30,7 +30,7 @@ def pardict_from_image(imfile):
 def export_mask(indices, filename, pardict):
     mask = np.ones(pardict['pix_x']*pardict['pix_y'], dtype = 'uint8')*255
     mask[indices] = 0
-    mask = np.reshape(mask, [pardict['pix_x'], pardict['pix_y']])
+    mask = np.reshape(mask, [pardict['pix_y'], pardict['pix_x']])
     tifffile.imwrite(filename, data=mask)
     return
 
