@@ -43,7 +43,6 @@ def traces_from_stack(stack, peaksel, bgsel, peakpix, bgpix, binning):
     data[:, 0] = 0
     # peak traces
     peak = data[:, peaksel]
-    print(peak.shape)
     peak = np.sum(peak, 1) / peakpix
     # bg traces
     bg = data[:, bgsel]
