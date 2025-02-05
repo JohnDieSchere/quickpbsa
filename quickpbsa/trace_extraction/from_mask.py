@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import tifffile
 import os
-from scipy.ndimage import measurements
+from scipy.ndimage import label
 
 # relative imports
 from .helpers import pardict_from_image
@@ -68,7 +68,7 @@ def extract_traces_mask(tiffstack, maskfile, dist, r_bg, roifile=None,
         roi = tifffile.imread(roifile).astype(bool)
         mask = mask & roi
     # split segmentation
-    labels, Nlabels = measurements.label(mask)
+    labels, Nlabels = label(mask)
     labels = np.ravel(labels)
     # create constant array for surrounding
     xx, yy = np.meshgrid(np.arange(-dist, dist + 1),
@@ -188,7 +188,7 @@ def extract_traces_mask(tiffstack, maskfile, dist, r_bg, roifile=None,
     export_mask(bgsel, outfile_bgmask, pardict)
     
     #### Extract traces from stack and save to csv ############################
-    peak, bg = traces_from_stack(tiffstack, peaksel, bgsel, peakpix, bgpix, binning)
+    peak, bg = traces_from_stack(tiffstack, peaksel.T, bgsel.T, peakpix, bgpix, binning)
     outfile_peak = outpath + '/' + fname + '_peak.csv'
     export_csv(basedf, peak.T, outfile_peak, pardict)
     outfile_bg = outpath + '/' + fname + '_bg.csv'

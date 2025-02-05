@@ -27,7 +27,8 @@ def posterior_single(data, jpos, means, variances, df, i_in=0, lamb=0.1, gamma0=
         K = len(jpos)
         m = sum(map(abs, df))
         stp, ct = np.unique(np.abs(df), return_counts = True)
-        sic = sum(nphi*np.log(varphi) + np.array(list(map(sum, (np.split(data, jpos) - i*mf - mb)**2)))/varphi)
+        data_split = np.split(data, jpos)
+        sic = sum(nphi*np.log(varphi) + np.array([np.sum((data_split[kk] - i[kk]*mf - mb)**2) for kk in range(len(i))])/varphi)
         sic += 2*( - K*np.log(lamb) - np.log(factorial(m - K) * factorial(K) / factorial(m - 1)) + np.sum(np.log(factorial(ct))))
         sic += 2*gamma0*(m - K + 1)/K + np.log(m - K + 2) + np.log(m - K + 1) - np.log(m - K + 2 - (m - K + 1) * np.exp(-gamma0 / K))
     else:
@@ -161,7 +162,8 @@ def add_step(data, jpos, means, variances, steps, lamb = 0.1, gamma0 = 0.5):
     # build arrays for squared diff,  variance and length
     i_in = np.cumsum(np.hstack((0, steps)))
     steploc = np.hstack((0, jpos, sz))
-    diffar = np.tile(np.array(list(map(sum, (np.split(data, jpos) - i_in*mf - mb)**2))), [sz - jpos[1], 1])
+    data_split = np.split(data, jpos)
+    diffar = np.tile(np.array([np.sum((data_split[kk] - i_in[kk]*mf - mb)**2) for kk in range(len(i_in))]), [sz - jpos[1], 1])
     diffar = np.hstack((diffar, np.zeros([sz - jpos[1], 1])))
     varphi = np.tile(np.hstack((i_in*vf + vb, 0)), [sz - jpos[1], 1])
     nphi = np.tile(np.hstack((np.diff(steploc), 0)), [sz - jpos[1], 1])
@@ -174,10 +176,12 @@ def add_step(data, jpos, means, variances, steps, lamb = 0.1, gamma0 = 0.5):
             stepl = int(steploc[I + 1] - steploc[I])
             if I < len(steploc) - 2:
                 # shift values after current range by one and recalculate with i  + / -  1
-                try:
-                    dd = np.array(list(map(sum, (np.split(data[steploc[I + 1]:], jpos[I + 1:] - steploc[I + 1]) - (i_in[I + 1:] + stp)*mf - mb)**2)))
-                except ValueError:
-                    dd = np.array(list(map(sum, (np.split(data[steploc[I + 1]:], jpos[I + 1:] - steploc[I + 1]) - np.expand_dims((i_in[I + 1:] + stp)*mf - mb, axis = 1))**2)))
+                #try:
+                data_split = np.split(data[steploc[I + 1]:], jpos[I + 1:] - steploc[I + 1])
+                dd = np.array([np.sum((data_split[kk] - (i_in[kk+I+1]+stp)*mf - mb)**2) for kk in range(len(data_split))])
+                #dd = np.array(list(map(sum, (np.split(data[steploc[I + 1]:], jpos[I + 1:] - steploc[I + 1]) - (i_in[I + 1:] + stp)*mf - mb)**2)))
+                #except ValueError:
+                #dd = np.array(list(map(sum, (np.split(data[steploc[I + 1]:], jpos[I + 1:] - steploc[I + 1]) - np.expand_dims((i_in[I + 1:] + stp)*mf - mb, axis = 1))**2)))
                 diffar[steploc[I] - jpos[1]:steploc[I + 1] - jpos[1], I + 2:] = np.tile(dd, [stepl, 1])
                 varphi[steploc[I] - jpos[1]:steploc[I + 1] - jpos[1], I + 2:] = np.tile((i_in[I + 1:] + stp)*vf + vb, [stepl, 1])
                 nphi[steploc[I] - jpos[1]:steploc[I + 1] - jpos[1], I + 2:] = np.tile(np.diff(steploc[I + 1:]), [stepl, 1])

@@ -81,8 +81,8 @@ def step2result_from_json(jsonfile, kvout, flags, avg_laststep):
     No = len(outputs)
     result_out = basedf.iloc[np.repeat(np.arange(N_traces), No)]
     result_out = result_out.reset_index(drop=True)
-    result_out['step2_time [s]'] = 0
-    result_out['sic_final'] = 0
+    result_out['step2_time [s]'] = 0.0
+    result_out['sic_final'] = 0.0
     result_out['type'] = outputs*N_traces
     result_out['flag'] = np.repeat(flags, No)
     # result array
